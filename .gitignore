@@ -11,3 +11,7 @@
 # Data Folders
 /data
 /original_data/Data
+
+# Files 
+.pdf
+.tex
