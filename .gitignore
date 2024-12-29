@@ -1,12 +1,12 @@
 /Manifest.toml
 
 # Data 
-.xlx
-.csv
-.xlsx
-.json
-.RData
-.rds
+*.xlx
+*.csv
+*.xlsx
+*.json
+*.RData
+*.rds
 
 # Data Folders
 /data
