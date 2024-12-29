@@ -11,7 +11,7 @@
 
 # lambda_R as a function of RCR (expressed as cost share incl assembly), for a given alpha
 lambda_RCR <- function(RCR,alpha) {
-  lambda_R <- fifelse(alpha>=0 & alpha<RCR, (RCR-alpha)/(1-alpha),0)
+  lambda_R <- ifelse(alpha>=0 & alpha<RCR, (RCR-alpha)/(1-alpha),0)
   return(lambda_R)
   }
 # chi_R as a function  of lambda_R 
@@ -19,11 +19,17 @@ chi_lambda <- function(lambda_R,delta,theta) {
   denom = 1+((1/lambda_R -1)/delta)^(theta/(theta+1))
   return(1/denom)
 }
+
 # Unconstrained parts share
-chi_U <- function(delta,theta) 1/(1+delta^(-theta))
+# This function is problematic, it always returns 0.5
+# chi_U <- function(delta,theta) 1/(1+delta^(-theta)) 
+chi_U <- function(delta,theta) {
+  return(1/(1+delta^(-theta)))
+}
+
 # Unconstrained costs share : uses the EK miracle 
 lambda_U <- chi_U 
-#
+
 # Analytic density of chi_U (and lambda_U) for unconstrained firms
 pdf_U <- function(x,theta,mu,sigma,pct=TRUE) {
   if(pct==TRUE) x = x/100 
