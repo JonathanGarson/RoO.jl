@@ -1,6 +1,5 @@
 # This file contains the functions used to calibrate the AALA model.
 
-# Module definition
 module AALA_calibration_functions
 
 using Distributions
@@ -9,20 +8,27 @@ using Distributions
 # Base functions ==============================================================
 
 #lambda_R as a function of RCR (expressed as cost share incl assembly), for a given alpha  
-function lambda_RCR(RCR, alpha)
-    lambda_R = [a >= 0 && a < RCR ? (RCR - a) / (1 - a) : 0 for a in alpha]
-    return lambda_R
+function lambda_RCR(RCR::Float64, alpha::AbstractVector{Float64})
+    # Compute lambda_R based on conditions
+    lambda_R = [0.0 <= a < RCR ? (RCR - a) ./ (1 - a) : 0.0 for a in alpha]
+    return lambda_R::AbstractVector{Float64}
 end
-#Je pense que cette fonction ne concerne pas des vecteurs, sinon i faudrait ajouter des broadcasts
+
+#Je pense que cette fonction ne concerne pas des vecteurs, 
+# sinon i faudrait ajouter des broadcasts
 
 # chi_R as a function  of lambda_R 
-function chi_lambda(lambda_R::AbstractVector, delta, theta)
-    # Compute the denominator for each element
+function chi_lambda(lambda_R::AbstractVector{Float64}, delta::Float64, theta::Float64)
+    # Ensure lambda_R is vectorized
+    lambda_R = typeof(lambda_R) <: AbstractVector ? lambda_R : [lambda_R]
+
+    # Compute denom element-wise
     denom = 1 .+ ((1 ./ lambda_R .- 1) ./ delta) .^ (theta / (theta + 1))
-    
-    # Return the result
+
+    # Return element-wise result
     return 1 ./ denom
 end
+
 
 # Unconstrained parts share
 function chi_U(delta, theta)
@@ -32,39 +38,52 @@ end
 # Unconstrained costs share : uses the EK miracle 
 const lambda_U = chi_U
 
-#Analytic density of chi_U (and lambda_U) for unconstrained firms
-function pdf_U(x, theta, mu, sigma; pct=true)
-    # Convert x to proportions if expressed in percentage
+# #Analytic density of chi_U (and lambda_U) for unconstrained firms
+function pdf_U(x::Union{Real, AbstractVector}, theta::Float64, mu::Float64, sigma::Float64; pct::Bool=true)
+    # Convert scalar to vector if needed
+    x = typeof(x) <: AbstractVector ? x : [x]
+
+    # Scale x if expressed in percentage
     if pct
-        x = x / 100
+        x .= x ./ 100  # Element-wise division
     end
 
-    # Transformation of x to y
-    y = x / (1 - x)
+    # Transform x to y
+    y = x ./ (1 .- x)  # Element-wise operations
 
     # Compute the density
-    g = pdf(LogNormal(mu, sigma), y^(1 / theta)) * (1 / (theta * x^2)) * y^(1 + 1 / theta)
+    g = pdf.(LogNormal(mu, sigma), y .^ (1 / theta)) .* (1 ./ (theta .* x .^ 2)) .* y .^ (1 + 1 / theta)
 
-    # Convert g back to percentage scale if required
-    return pct ? g / 100 : g
+    # Return scaled density if pct is TRUE
+    return pct ? g ./ 100 : g
 end
-#je suis pas sure de comprendre pct=TRUE, ça deviendra peut être plus clair quand on utilisera la fonction.
+# Je pense que c'est une option pour exprimer les résultats en pourcentage mais je trouve ça étrange
+# Je pense qu'on devrait typer nos outputs pour éviter les erreurs
 
 # Unconstrained cost : Compute the index using chi_U
-function C_U(delta, theta)
+function C_U(delta::Float64, theta::Float64)
     index = chi_U(delta, theta)^(1 / theta)
-    return index
+    return index::Float64
 end
 
 # Cost of compliance 
-function C_comply(lambda_R, delta, theta)
-    chi_R = chi_lambda.(lambda_R, delta, theta)
+# function C_comply(lambda_R::AbstractVector, delta::Float64, theta::Float64)
+#     chi_R = chi_lambda.(lambda_R, delta, theta)
+#     k = (1 + theta) / theta
+#     return chi_R.^k .+ delta .* (1 .- chi_R).^k
+# end
+
+function C_comply(lambda_R::Union{AbstractVector, Float64}, delta::Float64, theta::Float64)
+    # Ensure lambda_R is always treated as a vector
+    lambda_R = typeof(lambda_R) <: AbstractVector ? lambda_R : [lambda_R]
+
+    chi_R = chi_lambda.(lambda_R, delta, theta)  # Broadcasting over vector
     k = (1 + theta) / theta
     return chi_R.^k .+ delta .* (1 .- chi_R).^k
 end
- 
+
 # C.tilde is C_comply / C_U
-function C_tilde(lambda_R, delta, theta)
+function C_tilde(lambda_R::AbstractVector{Float64}, delta::Float64, theta::Float64)
     # Compute the threshold lambda_U
     lambda_u = lambda_U(delta, theta)  # lambda_U is chi_U in Julia
     
@@ -75,7 +94,7 @@ function C_tilde(lambda_R, delta, theta)
     comply_values = C_comply.(lambda_R, delta, theta) ./ C_U(delta, theta)
     
     # Combine results
-    y = cons .* comply_values .+ .!cons  # Element-wise logical negation for (1 - cons)
+    y = cons .* comply_values .+ (.!cons .* 1)  # Element-wise logical negation for (1 - cons)
     return y
 end
 

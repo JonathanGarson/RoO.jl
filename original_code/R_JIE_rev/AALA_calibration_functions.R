@@ -37,6 +37,7 @@ pdf_U <- function(x,theta,mu,sigma,pct=TRUE) {
   g =  dlnorm(y^(1/theta),mu,sigma)*(1/(theta*x^2))*y^(1+1/theta)
   if(pct==TRUE) return(g/100) else return(g)
 }
+
 # Unconstrained cost  (call it C_U?).
 C_U <- function(delta,theta) { #  index <- (1+delta^(-theta))^(-1/theta)
   index <- chi_U(delta,theta)^(1/theta)
@@ -51,6 +52,7 @@ C_comply <- function(lambda_R,delta,theta) {
 # C.tilde is C_comply / C_U
 C.tilde <- function(lambda_R,delta,theta) {
   cons <- lambda_R > lambda_U(delta=delta,theta = theta) 
+  # print(cons)
   y <- cons * C_comply(lambda_R,delta=delta,theta = theta)/C_U(delta=delta,theta = theta) +1-cons
   return(y)
 }
