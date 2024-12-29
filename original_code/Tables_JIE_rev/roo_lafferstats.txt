@@ -1,0 +1,6 @@
+RCS  with no ROO:  65.92039 %
+first RCR for which content higher than with no ROO:  20.77928 %
+RCS under NAFTA:  67.91977 % 
+RCS under USMCA:  69.27192 % 
+change in RCS from USMCA:  1.990796 % 
+Laffer peaks at RCR =  84.41552 but RCS is just  69.71464

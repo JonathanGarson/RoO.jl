@@ -1,0 +1,50 @@
+Mexico shares by assembly location, conservative and then liberal
+$CA
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.000   0.000   0.000   5.923  15.000  41.000 
+
+$CA
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00   10.35   14.00   13.36   15.00   41.00 
+
+$MX
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00   32.00   40.00   41.85   55.00   79.00 
+
+$MX
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  2.939  32.000  40.000  42.424  55.000  79.000 
+
+$US
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.000   0.000   0.000   6.093  15.000  60.000 
+
+$US
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00   10.68   14.00   14.05   15.00   60.00 
+
+Nafta shares by assembly location
+$CA
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   1.00   62.00   70.00   67.37   78.00   95.00 
+
+$CA
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  15.00   71.00   79.00   74.81   84.00   95.00 
+
+$MX
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00   49.00   60.00   63.28   78.00   97.00 
+
+$MX
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  5.877  49.000  63.000  63.854  80.000  97.000 
+
+$US
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   1.00   50.00   65.00   61.35   74.00   97.00 
+
+$US
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   5.00   60.00   72.00   69.31   82.00   97.00 
+
