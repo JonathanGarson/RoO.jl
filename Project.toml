@@ -5,6 +5,7 @@ version = "1.0.0-DEV"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]

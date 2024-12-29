@@ -1,34 +1,33 @@
 # This file contains the functions used to calibrate the AALA model.
-
 module AALA_calibration_functions
 
 using Distributions
-# using Root
+using Roots
 
 # Base functions ==============================================================
 
 #lambda_R as a function of RCR (expressed as cost share incl assembly), for a given alpha  
-function lambda_RCR(RCR::Float64, alpha::AbstractVector{Float64})
-    # Compute lambda_R based on conditions
-    lambda_R = [0.0 <= a < RCR ? (RCR - a) ./ (1 - a) : 0.0 for a in alpha]
-    return lambda_R::AbstractVector{Float64}
+function lambda_RCR(RCR::Float64, alpha::Union{Float64, AbstractVector{Float64}})
+    if isa(alpha, AbstractVector)
+        # Handle vector input
+        return [0.0 <= a < RCR ? (RCR - a) / (1 - a) : 0.0 for a in alpha]
+    else
+        # Handle scalar input
+        return 0.0 <= alpha < RCR ? (RCR - alpha) / (1 - alpha) : 0.0
+    end
 end
 
 #Je pense que cette fonction ne concerne pas des vecteurs, 
 # sinon i faudrait ajouter des broadcasts
 
 # chi_R as a function  of lambda_R 
-function chi_lambda(lambda_R::AbstractVector{Float64}, delta::Float64, theta::Float64)
-    # Ensure lambda_R is vectorized
-    lambda_R = typeof(lambda_R) <: AbstractVector ? lambda_R : [lambda_R]
-
+function chi_lambda(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Float64, theta::Float64)
     # Compute denom element-wise
     denom = 1 .+ ((1 ./ lambda_R .- 1) ./ delta) .^ (theta / (theta + 1))
 
     # Return element-wise result
     return 1 ./ denom
 end
-
 
 # Unconstrained parts share
 function chi_U(delta, theta)
@@ -73,17 +72,15 @@ end
 #     return chi_R.^k .+ delta .* (1 .- chi_R).^k
 # end
 
-function C_comply(lambda_R::Union{AbstractVector, Float64}, delta::Float64, theta::Float64)
+function C_comply(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Float64, theta::Float64)
     # Ensure lambda_R is always treated as a vector
-    lambda_R = typeof(lambda_R) <: AbstractVector ? lambda_R : [lambda_R]
-
     chi_R = chi_lambda.(lambda_R, delta, theta)  # Broadcasting over vector
     k = (1 + theta) / theta
     return chi_R.^k .+ delta .* (1 .- chi_R).^k
 end
 
 # C.tilde is C_comply / C_U
-function C_tilde(lambda_R::AbstractVector{Float64}, delta::Float64, theta::Float64)
+function C_tilde(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Float64, theta::Float64)
     # Compute the threshold lambda_U
     lambda_u = lambda_U(delta, theta)  # lambda_U is chi_U in Julia
     
@@ -99,13 +96,12 @@ function C_tilde(lambda_R::AbstractVector{Float64}, delta::Float64, theta::Float
 end
 
 # Limit of delta star as lambda_R -> 1 (in paper lambda_R -> chi_R, delta_max -> \bar{\delta}(\tau))
-function delta_max(tau, theta)
+function delta_max(tau::Float64, theta::Float64)
     return (tau^theta - 1)^(-1 / theta)
 end
 
-
 # Cutoff delta for complying
-function delta_star(lambda_R, tau, theta)
+function delta_star(lambda_R::Union{Float64, AbstractVector{Float64}}, tau::Float64, theta::Float64)
     # Define the auxiliary function ufn
     ufn = x -> C_tilde(lambda_R, x, theta) - tau
     
@@ -116,4 +112,7 @@ function delta_star(lambda_R, tau, theta)
     return find_zero(ufn, (0.00001, dmax))
 end
 
+# Cutoff delta for complying - unconstrained
+function delta_circ(lambda_R::Union{Float64, AbstractVector{Float64}})
+    return (lambda_R^(-1)-1)^(-1/theta-10)
 end # module
