@@ -1,0 +1,9 @@
+/Manifest.toml
+
+# Data 
+.xlx
+.csv
+.xlsx
+.json
+.RData
+.rds
