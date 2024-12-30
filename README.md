@@ -4,11 +4,11 @@
 
 This project is the replication of **[Head&amp;al (2024)](https://www.sciencedirect.com/science/article/pii/S0022199624000357)** paper on the Laffer Curve of Rule of Origin. The objective is to reproduce the main results obtained by the authors using Julia and, eventually, improving on the speed to simulate the results. This is a last year work of the graduate program in Economics of [SciencesPo Paris Economic Department](https://www.sciencespo.fr/department-economics/), for the class of computational economics taught by Professor [Florian Oswald](https://floswald.github.io/).
 
-**Authors : Mathilde Blanchon & Jonathan Garson**
+**Authors : Mathilde Blanchon & Jonathan Garson & Marie-Ange Ortiz**
 
 ## Folder organisation
 
-The folders are organised as follow: 
+The folders are organised as follow:
 
 **Data** : Contains all the necessary data for the replication of the paper in a non-proprietary formats. Data are anonymized.
 
