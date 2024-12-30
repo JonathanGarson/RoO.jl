@@ -88,8 +88,10 @@ sim_lambda <- function(RCR,mu,sigma,theta,tau_data,alpha.lo,alpha.hi,alpha.a,alp
   # dummy formulation of if/else
   lambda_model <- lambda.R*comply.con +lambda.U*(1-comply.con)
   RCS <- alpha*(1-lambda_model) + lambda_model
-  return(list(lambda_U=lambda.U,lambda_model=lambda_model,lambda_R=lambda.R, RCS = RCS, comply.cost = comply.cost, 
-              comply_frac = mean(comply.con),alpha = alpha,alpha_rng =range(alpha),delta_rng =range(delta),tau_rng =range(tau)))
+  return(
+    list(lambda_U=lambda.U,lambda_model=lambda_model,lambda_R=lambda.R, 
+    RCS = RCS, comply.cost = comply.cost, comply_frac = mean(comply.con),
+    alpha = alpha,alpha_rng =range(alpha),delta_rng =range(delta),tau_rng =range(tau)))
 }
 
 #

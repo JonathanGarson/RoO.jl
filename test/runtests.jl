@@ -33,6 +33,17 @@ include("../src/AALA_calibration_functions.jl")
 
     # Test delta_max
     @test isapprox(delta_max(0.5, 0.5), 11.65685; atol=1e-5)
+
+    # Test delta_star
+
+    # Test delta_circ
+
+    # Test beta_draws
+    @test beta_draws(1, 0.5, 0.5) isa Union{Float64, AbstractVector{Float64}}
+
+    # Test ubeta_draws
+    @test ubeta_draws(1, 0.5, 0.5) isa Union{Float64, AbstractVector{Float64}}
+
 end
 
 # We test for the calibration of the model ==========================================================
