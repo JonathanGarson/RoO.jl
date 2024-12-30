@@ -3,7 +3,7 @@ module AALA_calibration_functions
 
 using Distributions
 using Roots
-using DataTables
+using DataFrames
 using StatsBase
 
 # BASE FUNCTIONS ==============================================================
@@ -193,6 +193,7 @@ end
 # 1. Calibration of the model to lambda
 # 2. Welfare calculations using chi 
 
+# Main function for simulating lambda and alpha =================================
 function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
 # We draw the three dimensions of heterogeneity :
 # - delta : substituability of foreing vers domestic imput
@@ -218,7 +219,7 @@ function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha,
     compliance = 
         ifelse.(comply_con .== true, "CC",
         ifelse.(comply_uncon .== true, "CU",
-        ifelse.(noncomp .== true, "NC", "Unknown")))
+        ifelse.(noncomp .== true, "NC")))
 
     # Dummy for formulation of if/else
     lambda_true = lambda_R .* comply_con .+ lambda_U .* (1 .- comply_con)
@@ -251,7 +252,133 @@ function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha,
         :delta => delta)
 end
 
+# Main functions for simulating lambda and alpha and keeping track of V_iso_o ========================
+function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
+# We draw the three dimensions of heterogeneity :
+# - delta : substituability of foreing vers domestic imput
+# - tau, tauQ : tariff from imports
+# - alpha : share of local production before measure
+    delta = rand(LogNormal(mu, sigma), N) #always firm specific
+    tau_O = tau_data[sample(1:length(tau_data), N, replace=true)] #always firm specific
+    tau = select(tau_O, "tau") # not sure about this part
+    tauQ = select(tau_O, "tauQ") # not sure about this part 
+    V_iso_o = select(tau_O, "V_iso_o") # not sure about this part 
+    alpha = ubeta_draws(N, mu_alpha, conc_alpha)
 
+    # Compute costs
+    lambda_R = lambda_RCR(RCR, alpha) # firm specific if alpha is heterogenous
+    lambda_U = lambda_U(delta, theta)
+    C_R = C_comply(lambda_R, delta, theta)
+    C_u = C_U(delta, theta)
+    comply_cost = C_tile(lambda_R, delta, theta).^(1-alpha) #modified version from the authors (l.133)
+
+    # Condition compliance
+    comply_con = (comply_cost .<= tau) .& (lambda_U .<= lambda_R)
+    comply_uncon = lambda_U  .>= lambda_R
+    noncomp = 1-comply_con-comply_uncon
+    compliance = 
+        ifelse.(comply_con .== true, "CC",
+        ifelse.(comply_uncon .== true, "CU",
+        ifelse.(noncomp .== true, "NC")))
+
+    # Dummy for formulation of if/else
+    lambda_true = lambda_R .* comply_con .+ lambda_U .* (1 .- comply_con)
+    chi_true = chi_lambda(lambda_R, delta, theta).*comply_con .+ lambda_U .* (1 .- comply_con)
+    cost_true = comply_con .* C_R.^(1-alpha) .+ comply_uncon.*C_u.^(1-alpha) .+ noncomp.*tau.*(C_u.^(1-alpha)) 
+    # add on error
+    lambda_model = ubeta_draws(N, lambda_true, conc_err)
+    chi_model = chi_true
+    RCS = alpha .* (1 .- lambda_true) .+ lambda_true # regional content share
+
+    # Store the results in a dictionary and return it
+    return results = Dict(
+        :lambda_U => lambda_U,
+        :lambda_R => lambda_R,
+        :lambda_model => lambda_model,
+        :chi_model => chi_model,
+        :RCS => RCS,
+        :cost_true => cost_true,
+        :comply_cost => comply_cost,
+        :compliance => compliance,
+        :CC_frac => mean(comply_con),
+        :CU_frac => mean(comply_uncon),
+        :alpha_mean => mean(alpha),
+        :alpha_rng => extrema(alpha), 
+        :delta_rng => extrema(delta), 
+        :tau_rng => extrema(tau),     
+        :alpha => alpha,
+        :tau => tau,
+        :tauQ => tauQ,
+        :delta => delta,
+        :V_iso_o => V_iso_o)
+end
+
+# Function for simulating with relocation =======================================
+function sim_lambda_alpha_DRF(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, omegaF,omegaR,kappa,N)
+    # We draw the three dimensions of heterogeneity
+    delta_tilde = rand(LogNormal(N, mu, sigma), N) # always firm specific
+    delta = delta_tilde./kappa # kappa is for relocation
+    tauDT = tau_data[sample(1:length(tau_data), N, replace= true)] # carlines specific beta_draws
+    alpha = ubeta_draws(N, mu_alpha, conc_alpha)
+    Cost_W = DataFrame(id = 1:length(tauDT), tau_dt = tauDT, alph = alpha, delt = delta)
+
+    # Compute costs, n.b. the kappa needs to be multiplied back on! 
+    Cost_W[:, :lambda_R] = lambda_RCR(RCR, alpha) # parts costr share equivalent of the RCR
+    Cost_W[:, C_u] = C_U(delta.*kappa, theta) #parts cost of complying domestic *unconstrained* 
+    Cost_W[:, CDC] = C_tilde(lambda_R, delta.*kappa, theta).^(1-alpha) # rel. cost of complying domestically *constrained*
+    Cost_W[:, NCD] = tauD # rel. cost of non-compliance domestically (stay in MX, pay the MFN to Canada and US)
+    Cost_W[:, NCR] = tauR.*omegaR  # rel. cost of non-compliance in the RTA (->USA in fact), where costs are omegaR higher
+    Cost_W[:, NCF] = tauF.*omegaF.*(kappa.*(C_U(delta./kappa, theta)/C_u).^(1-alpha)) # rel. cost of non-compliance in Foreing
+    idvars = names(Cost_W)[1:13] #id ... chosen_R C.U (unlike in exog location versions, we need to keep  chosen_R)
+
+    # PROBABLY TO BE RECHECKED
+
+    # Melt the DataFrame
+    Cost_L = stack(Cost_W, [:CDC, :NCD, :NCR, :NCF], variable_name=:choice, value_name=:relcost)
+
+    # Sort by ID and relcost
+    sort!(Cost_L, [:id, :relcost])
+
+    # Compute minimum cost
+    Cost_min = @chain Cost_L begin
+        groupby(idvars)
+        @combine(:choice => first(:choice), :relcost => first(:relcost))
+    end
+
+    # Modify choice based on conditions
+    @chain Cost_min begin
+        @where :relcost .== 1 .&& :choice .== "CDC"
+        @transform!(:choice => "CDU")
+    end
+
+    # Compute costs in levels
+    Cost_min[!, :cost_true] .= Cost_min[!, :relcost] .* (C_U ^ (1 - alpha))
+
+    # Compute lambda_U
+    Cost_min[!, :lambda_U] .= ifelse.(:choice .in ["NCD", "CDU", "NCR", "CDC"], lambda_U(delta .* kappa, theta),
+                                       lambda_U(delta ./ kappa, theta))
+
+    # Compute lambda_true
+    Cost_min[!, :lambda_true] .= ifelse.(:choice .in ["NCD", "CDU", "NCR"], lambda_U(delta .* kappa, theta),
+                                         ifelse.(:choice .== "NCF", lambda_U(delta ./ kappa, theta), lambda_R))
+
+    # Compute chi_true
+    Cost_min[!, :chi_true] .= ifelse.(:choice .in ["NCD", "CDU", "NCR", "NCF"], :lambda_true,
+                                      ifelse.(:choice .== "CDC", chi_lambda(lambda_R, delta .* kappa, theta), missing))
+
+    # Add error to lambda_true
+    Cost_min[!, :lambda_model] .= ubeta_draws(N, centre=:lambda_true, concentration=conc_err)
+
+    # Assign chi_model
+    Cost_min[!, :chi_model] .= Cost_min[!, :chi_true]
+
+    # Compute RCS
+    Cost_min[!, :RCS] .= alpha .* (1 .- Cost_min[!, :lambda_true]) + Cost_min[!, :lambda_true]
+  
+    return Cost_min
+end
+
+# FUNCTIONS FOR THE LAFFER CURVE
 
 
 end # module
