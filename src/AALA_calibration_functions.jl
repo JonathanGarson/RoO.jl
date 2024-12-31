@@ -4,6 +4,7 @@ module AALA_calibration_functions
 using Distributions
 using Roots
 using DataFrames
+using DataFramesMeta
 using StatsBase
 using Random
 
@@ -330,15 +331,13 @@ function sim_lambda_alpha_DRF(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_al
     Cost_W[:, NCD] = tauD # rel. cost of non-compliance domestically (stay in MX, pay the MFN to Canada and US)
     Cost_W[:, NCR] = tauR.*omegaR  # rel. cost of non-compliance in the RTA (->USA in fact), where costs are omegaR higher
     Cost_W[:, NCF] = tauF.*omegaF.*(kappa.*(C_U(delta./kappa, theta)/C_u).^(1-alpha)) # rel. cost of non-compliance in Foreing
-    idvars = names(Cost_W)[1:13] #id ... chosen_R C.U (unlike in exog location versions, we need to keep  chosen_R)
-
+    
     # PROBABLY TO BE RECHECKED
 
     # Melt the DataFrame
-    Cost_L = stack(Cost_W, [:CDC, :NCD, :NCR, :NCF], variable_name=:choice, value_name=:relcost)
-
-    # Sort by ID and relcost
-    sort!(Cost_L, [:id, :relcost])
+    idvars = names(Cost_W)[1:13]
+    Cost_L = stack(Cost_W, [:CDC, :NCD, :NCR, :NCF], id_vars = idvars , variable_name=:choice, value_name=:relcost)
+    sort!(Cost_L, [:id, :relcost]) # Sort by ID and relcost
 
     # Compute minimum cost
     Cost_min = @chain Cost_L begin
@@ -347,30 +346,37 @@ function sim_lambda_alpha_DRF(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_al
     end
 
     # Modify choice based on conditions
+    # important: when relcost is one and choice is CD, 
+    # then complying is unconstrained
     @chain Cost_min begin
         @where :relcost .== 1 .&& :choice .== "CDC"
         @transform!(:choice => "CDU")
     end
-
-    # Compute costs in levels
+    
+    # Compute costs in levels, modified to include alpha
     Cost_min[!, :cost_true] .= Cost_min[!, :relcost] .* (C_U ^ (1 - alpha))
 
-    # Compute lambda_U
-    Cost_min[!, :lambda_U] .= ifelse.(:choice .in ["NCD", "CDU", "NCR", "CDC"], lambda_U(delta .* kappa, theta),
-                                       lambda_U(delta ./ kappa, theta))
+    # Compute parts cost share before adding errors
+    Cost_min[!, :lambda_U] .= 
+        ifelse.(:choice .in ["NCD", "CDU", "NCR", "CDC"], 
+        lambda_U(delta .* kappa, theta),
+        lambda_U(delta ./ kappa, theta))
 
     # Compute lambda_true
-    Cost_min[!, :lambda_true] .= ifelse.(:choice .in ["NCD", "CDU", "NCR"], lambda_U(delta .* kappa, theta),
-                                         ifelse.(:choice .== "NCF", lambda_U(delta ./ kappa, theta), lambda_R))
+    Cost_min[!, :lambda_true] .= 
+    ifelse.(:choice .in ["NCD", "CDU", "NCR"], lambda_U(delta .* kappa, theta),
+    ifelse.(:choice .== "NCF", lambda_U(delta ./ kappa, theta)),
+    ifelse.(:choice .== "CDC", lambda_R, missing))
 
-    # Compute chi_true
-    Cost_min[!, :chi_true] .= ifelse.(:choice .in ["NCD", "CDU", "NCR", "NCF"], :lambda_true,
-                                      ifelse.(:choice .== "CDC", chi_lambda(lambda_R, delta .* kappa, theta), missing))
+    # Compute chi_true, now convert to fractions of parts, requires a special transformation for the constrained carlines
+    Cost_min[!, :chi_true] .= 
+    ifelse.(:choice .in ["NCD", "CDU", "NCR", "NCF"], :lambda_true,
+    ifelse.(:choice .== "CDC", chi_lambda(lambda_R, delta .* kappa, theta), missing))
 
-    # Add error to lambda_true
+    # Add error to lambda_true, has to be done like this to keep  0<=lambda_model <= 1
     Cost_min[!, :lambda_model] .= ubeta_draws(N, centre=:lambda_true, concentration=conc_err)
 
-    # Assign chi_model
+    # Assign chi_model, no err because this is not part of calibration
     Cost_min[!, :chi_model] .= Cost_min[!, :chi_true]
 
     # Compute RCS

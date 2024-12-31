@@ -4,7 +4,7 @@ library(latex2exp)
 library(parallel)
 library(beepr)
 rm(list=ls())
-source("R_JIE_rev/AALA_calibration_functions.R") # 
+source("original_code/R_JIE_rev/AALA_calibration_functions.R") # 
 #
 calib.years <- 2011:2019
 gen.figs <- TRUE # set to TRUE to generate  density and Laffer curves
@@ -19,7 +19,7 @@ theta.base <- 4
 params = list(RCR=0.625)
 RCR = 100*params$RCR
 #
-DR <- readRDS("Data/RDS_JIE_rev/AALA_rev.rds")[year %in% calib.years]  # data prepared by AALA_clean.R, with many fixes
+DR <- readRDS("original_code/Data/RDS_JIE_rev/AALA_rev.rds")[year %in% calib.years]  # data prepared by AALA_clean.R, with many fixes
 #
 # Choose the conservative or liberal going forward, and compute data density, also load tau index
 if(MEX_con_lib=="con")  DR[,nafta_shr := nafta_shr_con] else DR[,nafta_shr := nafta_shr_lib] 
@@ -30,7 +30,7 @@ DD <- data.table(x=lambda_data_d$x,y=lambda_data_d$y)
 DD[,x_rnd := round(x)]
 DD <- DD[x_rnd %between% c(0,100),.(den_data = mean(y)),by=x_rnd]
 #
-DC <- readRDS("Data/RDS_JIE_rev/tau_index_DRF.rds") # 
+DC <- readRDS("original_code/Data/RDS_JIE_rev/tau_index_DRF.rds") # 
 #
 params = list(theta=theta.base,mu=0.0,sigma=0.0,RCR=0.625,tau=DC$tau_index,alpha=alpha.base,conc.err=1e10)
 params$tau <- data.table(tau=DC$tauD,tauQ=1)
