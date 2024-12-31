@@ -223,8 +223,8 @@ sim_lambda_alpha_DRF <- function(RCR,mu,sigma,theta,tau_data,mu.alpha,conc.alpha
   Cost_min[, cost_true := relcost*C.U^(1-alpha) ]  
   # compute parts cost share before adding errors
   Cost_min[,lambda_U := fcase(
-    choice %in% c("NCD","CDU","NCR","CDC"),lambda_U(delta=delta*kappa,theta=theta),
-    choice == "NCF",lambda_U(delta=delta/kappa,theta=theta)
+    choice %in% c("NCD","CDU","NCR","CDC"), lambda_U(delta=delta*kappa,theta=theta),
+    choice == "NCF", lambda_U(delta=delta/kappa,theta=theta)
   )]
   #
   Cost_min[,lambda_true := fcase(

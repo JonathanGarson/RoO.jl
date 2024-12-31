@@ -1,12 +1,15 @@
 # This file contains the functions used to calibrate the AALA model.
 module AALA_calibration_functions
 
+using Chain
 using Distributions
-using Roots
 using DataFrames
 using DataFramesMeta
-using StatsBase
+using KernelDensity
+using LinearAlgebra
+using Roots
 using Random
+using StatsBase
 
 # BASE FUNCTIONS ==============================================================
 
@@ -255,7 +258,7 @@ function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha,
 end
 
 # Main functions for simulating lambda and alpha and keeping track of V_iso_o ========================
-function sim_lambda_alpha(; RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
+function sim_lambda_alpha_o(; RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
 # We draw the three dimensions of heterogeneity :
 # - delta : substituability of foreing vers domestic imput
 # - tau, tauQ : tariff from imports
@@ -358,19 +361,19 @@ function sim_lambda_alpha_DRF(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_al
 
     # Compute parts cost share before adding errors
     Cost_min[!, :lambda_U] .= 
-        ifelse.(:choice .in ["NCD", "CDU", "NCR", "CDC"], 
-        lambda_U(delta .* kappa, theta),
-        lambda_U(delta ./ kappa, theta))
+    ifelse.(:choice .∈ ["NCD", "CDU", "NCR", "CDC"], 
+    lambda_U(delta .* kappa, theta),
+    lambda_U(delta ./ kappa, theta))
 
     # Compute lambda_true
     Cost_min[!, :lambda_true] .= 
-    ifelse.(:choice .in ["NCD", "CDU", "NCR"], lambda_U(delta .* kappa, theta),
+    ifelse.(:choice .∈ ["NCD", "CDU", "NCR"], lambda_U(delta .* kappa, theta),
     ifelse.(:choice .== "NCF", lambda_U(delta ./ kappa, theta)),
     ifelse.(:choice .== "CDC", lambda_R, missing))
 
     # Compute chi_true, now convert to fractions of parts, requires a special transformation for the constrained carlines
     Cost_min[!, :chi_true] .= 
-    ifelse.(:choice .in ["NCD", "CDU", "NCR", "NCF"], :lambda_true,
+    ifelse.(:choice .∈ ["NCD", "CDU", "NCR", "NCF"], :lambda_true,
     ifelse.(:choice .== "CDC", chi_lambda(lambda_R, delta .* kappa, theta), missing))
 
     # Add error to lambda_true, has to be done like this to keep  0<=lambda_model <= 1
@@ -385,7 +388,7 @@ function sim_lambda_alpha_DRF(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_al
     return Cost_min
 end
 
-# FUNCTIONS FOR THE LAFFER CURVE
+# FUNCTIONS FOR THE LAFFER CURVE ===============================================
 # !!!!!!!! problem ici 
 function sim_avg_RCS_alpha(RCR, theta, mu, sigma, tau_data, alpha, conc_alpha, conc_err, N)
     # Set random seed for reproducibility
@@ -425,6 +428,67 @@ function sim_choice( RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc
     return DataFrame(RCR=RCR, choices)
 end
 
+# LOSS FUNCTIONS ===============================================================
 
+# Loss functions for  parameters to estimate. theta is now assumed fixed in all of those ====
+# This function is supposed to provide the same output as loss_fun_4par but include more parameters with the idea of improving reproducibility
+function loss_fun_alpha(; params_glob::Dict, param_est::Dict?, num_obs::Int64, DR::DataFrame, DS::DataFrame, CAMUS::Vector)
+    seed(123)
+
+    sim_out = sim_lambda_alpha(RCR = params_glob[:RCR], theta = params_glob[:theta], mu_alpha = params_glob[:mu_alpha], tau_data = params_glob[:tau], 
+                               mu = param_est[:mu], sigma = sqrt.(abs.(param_est[:sigma]).^2),
+                               mu_err = param_est[:mu_err], sigma_err = sqrt.(abs.(param_est[:sigma_err]).^2), 
+                               conc_alpha = param_est[:conc_alpha], N=num_obs*20)
+    lambda_sim = 100 .* sim_out[:lambda_model]
+    lambda_sim_d = kde(sim_out[:lambda_model])
+
+    # Density of the simulated data
+    DS = DataFrame(:x = lambda_sim_d.x, :y = lambda_sim_d.density)
+    DS[!, x_round] = round.(DS[!, :x], digits=2)
+    DS = @chain DS begin
+        @filter(:x_round .>= 0.00 .&& :x_round .<= 100.00)
+        @groupby(:x_round)
+        @combine(:den_sim = mean(:y))
+    end 
+
+    # Density of the observed data
+    lambda_data_d = @chain DR begin
+        @filter(!ismissing(:nafta_shr) && :ell in CAMUS)  # Filter rows
+        @select(:nafta_shr)                              # Select relevant column
+        x -> kde(x.nafta_shr)                            # Perform density estimation
+        x -> DataFrame(x = x.x, density = x.density)     # Create output DataFrame
+    end
+    DS = join(DD, DS, on = :x_rnd, kind = :inner)
+    
+    # Compute the distance (loss) between the two densities
+    den_data = DS.den_data
+    den_sim = DS.den_sim
+    fit = norm(den_data .- den_sim) # Compute L2 norm
+    return fit
+end
+
+# BRUT FORCE FUNCTION ==========================================================
+# TEMPORARY FUNCTION FOR TESTING PURPOSES
+
+function brut_force_optim(mu_val, num_obs)
+    mu_rep = reapeat([mu_val], num_obs)
+
+    # Compute loss for each combination of parameters
+    loss = map(
+        (sigma, alphacon, errcon) -> loss_fun_alpha(mu_val, sigma, alphacon, errcon),
+        param_grid.sigma,
+        param_grid.alphacon,
+        param_grid.errcon
+    )
+
+    # Create and return a DataFrame
+    return DataFrame(
+        mu = mu_rep,
+        sigma = param_grid.sigma,
+        cona = param_grid.alphacon,
+        cone = param_grid.errcon,
+        loss = loss
+    )
+end
 
 end # module
