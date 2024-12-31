@@ -24,7 +24,7 @@ end
 # sinon i faudrait ajouter des broadcasts
 
 # chi_R as a function  of lambda_R 
-function chi_lambda(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Float64, theta::Float64)
+function chi_lambda(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Union{Float64, AbstractVector{Float64}}, theta::Float64)
     # Compute denom element-wise
     denom = 1 .+ ((1 ./ lambda_R .- 1) ./ delta) .^ (theta / (theta + 1))
 
@@ -33,8 +33,8 @@ function chi_lambda(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Fl
 end
 
 # Unconstrained parts share
-function chi_U(delta, theta)
-    return 1 / (1 .+ delta.^(-theta))
+function chi_U(delta::Union{Float64, AbstractVector{Float64}}, theta::Float64)
+    return 1 ./ (1 .+ delta.^(-theta))
 end
 
 # Unconstrained costs share : uses the EK miracle 
