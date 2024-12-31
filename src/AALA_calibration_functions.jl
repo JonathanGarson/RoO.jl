@@ -5,6 +5,7 @@ using Distributions
 using Roots
 using DataFrames
 using StatsBase
+using Random
 
 # BASE FUNCTIONS ==============================================================
 
@@ -253,14 +254,14 @@ function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha,
 end
 
 # Main functions for simulating lambda and alpha and keeping track of V_iso_o ========================
-function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
+function sim_lambda_alpha(; RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
 # We draw the three dimensions of heterogeneity :
 # - delta : substituability of foreing vers domestic imput
 # - tau, tauQ : tariff from imports
 # - alpha : share of local production before measure
     delta = rand(LogNormal(mu, sigma), N) #always firm specific
     tau_O = tau_data[sample(1:length(tau_data), N, replace=true)] #always firm specific
-    tau = select(tau_O, "tau") # not sure about this part
+    tau = select(tau_O, "tau") # not sure about this part - je pense que c'est faux, ça fait bugger les autres fonctions sim_choice
     tauQ = select(tau_O, "tauQ") # not sure about this part 
     V_iso_o = select(tau_O, "V_iso_o") # not sure about this part 
     alpha = ubeta_draws(N, mu_alpha, conc_alpha)
@@ -379,6 +380,45 @@ function sim_lambda_alpha_DRF(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_al
 end
 
 # FUNCTIONS FOR THE LAFFER CURVE
+# !!!!!!!! problem ici 
+function sim_avg_RCS_alpha(RCR, theta, mu, sigma, tau_data, alpha, conc_alpha, conc_err, N)
+    # Set random seed for reproducibility
+    Random.seed!(140341)
+
+    # Call the simulation function with the provided arguments
+    sim_out = sim_lambda_alpha(RCR, theta, mu, sigma,
+                               alpha, conc_alpha, 
+                               conc_err, tau_data, N)
+
+    # Scale the RCS values by 100
+    RCS = 100 .* sim_out[:RCS]
+
+    # Compute and return the mean of the scaled RCS values
+    return mean(RCS)
+end
+
+function sim_choice( RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
+    # Set random seed for reproducibility
+    Random.seed!(140341)
+
+    # Call the simulation function
+    sim_out = sim_lambda_alpha(RCR=RCR, mu=mu, sigma=sigma, theta=theta, tau_data=tau_data,
+                            mu_alpha=mu_alpha, conc_alpha=conc_alpha,
+                               conc_err=conc_err,  N=N)
+
+    # Extract the compliance data
+    compliance_data = sim_out[:compliance]
+
+    # Create a DataFrame from the compliance data
+    sim_df = DataFrame(choice=compliance_data)
+
+    # Count the number of occurrences for each choice
+    choices = combine(groupby(sim_df, :choice), nrow => :N)
+
+    # Add the RCR value to the result and return it
+    return DataFrame(RCR=RCR, choices)
+end
+
 
 
 end # module
