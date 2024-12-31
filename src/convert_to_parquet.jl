@@ -20,7 +20,8 @@ function load_data(file_path::String)::Tuple{Any, String}
 end
 
 # Function to convert loaded data to Parquet format
-function convert_to_parquet(;input_folder_path::String, output_folder_path::String)::Vector{String}
+function convert_to_parquet(; input_folder_path::String, output_folder_path::String)::Vector{String}
+    generated_files = String[]
     # List all files in the input folder
     collect_files = readdir(input_folder_path)
 
@@ -52,11 +53,12 @@ function convert_to_parquet(;input_folder_path::String, output_folder_path::Stri
             println("Failed to process file $file_path: $e")
         end
     end
+    return generated_files
 end
 
 
 # Convert the data in the input folder to Parquet format and save in the output folder
 folders = ["AALA", "Gravdata", "Mfg_surveys", "RDS_JIE_rev"]
 for folder in folders
-    convert_to_parquet(input_folder_path="data/$folder", output_folder_path="data/parquet/$folder")
+    convert_to_parquet(input_folder_path=joinpath("data", folder), output_folder_path=joinpath("data","parquet",folder))
 end
