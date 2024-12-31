@@ -432,7 +432,7 @@ end
 
 # Loss functions for  parameters to estimate. theta is now assumed fixed in all of those ====
 # This function is supposed to provide the same output as loss_fun_4par but include more parameters with the idea of improving reproducibility
-function loss_fun_alpha(; params_glob::Dict, param_est::Dict?, num_obs::Int64, DR::DataFrame, DS::DataFrame, CAMUS::Vector)
+function loss_fun_alpha(; params_glob::Dict, param_est::Dict, num_obs::Int64, DR::DataFrame, DS::DataFrame, CAMUS::Vector)
     seed(123)
 
     sim_out = sim_lambda_alpha(RCR = params_glob[:RCR], theta = params_glob[:theta], mu_alpha = params_glob[:mu_alpha], tau_data = params_glob[:tau], 
@@ -470,15 +470,22 @@ end
 # BRUT FORCE FUNCTION ==========================================================
 # TEMPORARY FUNCTION FOR TESTING PURPOSES
 
-function brut_force_optim(mu_val, num_obs)
+function brut_force_optim(; mu_val, params_glob::Dict, param_est::Dict, param_grid, DR::DataFrame, DS::DataFrame, CAMUS::Vector, num_obs::Int64)
     mu_rep = reapeat([mu_val], num_obs)
 
     # Compute loss for each combination of parameters
     loss = map(
-        (sigma, alphacon, errcon) -> loss_fun_alpha(mu_val, sigma, alphacon, errcon),
+        (sigma, alphacon, errcon) -> loss_fun_alpha(
+            params_glob = params_glob,
+            param_est = param_est,
         param_grid.sigma,
         param_grid.alphacon,
-        param_grid.errcon
+        param_grid.errcon,
+        num_obs = num_obs,
+        DR = DR,
+        DS = DS, 
+        CAMUS = CAMUS
+        )
     )
 
     # Create and return a DataFrame
