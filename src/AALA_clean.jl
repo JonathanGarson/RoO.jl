@@ -36,6 +36,7 @@ for i in flagged_indices #Apply specific fixes based on `carlines`
 end
 
 
+
 select!(DR, Not(:flag))  # Remove the flag column in place
 
 #2 problem w/ columns being shifted from one page of the VW raw data for 2017
@@ -306,3 +307,80 @@ US2 = unique(
 )
 
 USCAMX2 = union(union(US2, CA2), MX2)
+
+#ligne 99 et 107 : j'y arrive pas
+
+#
+#Nafta assembly location 1 countries
+DR.ell = [
+    ismissing(final_assembly1) ? missing :
+    final_assembly1 in US ? "US" :
+    final_assembly1 in CA ? "CA" :
+    final_assembly1 in MX ? "MX" :
+    "ROW"
+    for final_assembly1 in DR.final_assembly1
+]
+
+# Define the sets
+valid_ell = ["CA", "US", "MX"]
+valid_ell = vec(valid_ell) 
+
+#lignes 117- 120 : coding strategy differs a bit from r
+
+function count_rows(dataframe, condition_func)
+    count = 0
+    for row in eachrow(dataframe)
+        if condition_func(row)
+            count += 1
+        end
+    end
+    return count
+end
+
+# Count rows for each condition
+count1 = count_rows(DR, condition1)
+println("Count 1: $count1")
+
+count2 = count_rows(DR, condition2)
+println("Count 2: $count2")
+
+count3 = count_rows(DR, condition3)
+println("Count 3: $count3")
+
+# Filter rows where `us_ca_shr` is not missing
+DR = filter(row -> !ismissing(row[:us_ca_shr]), eachrow(DR)) |> DataFrame
+
+
+# Now starts the treatment of second assembly sites that are in NAFTA
+#
+# second assembly location logicals
+DR.ell2CA = map(x -> !ismissing(x) && x in CA2, DR.final_assembly2)
+DR.ell2US = map(x -> !ismissing(x) && x in US2, DR.final_assembly2)
+DR.ell2MX = map(x -> !ismissing(x) && x in MX2, DR.final_assembly2)
+
+# melt in the style of a Stata reshape long. Note that the expands dataset by the number of countries : 4666*3 = 13998
+D2 = stack(
+    DR, 
+    [:ell2CA, :ell2US, :ell2MX],  # Columns to melt
+    variable_name=:ell2,          # Name for new column storing original column names
+    value_name=:add_plant         # Name for new column storing values
+)
+
+#Remove "ell2" prefix from `ell2` column
+D2.ell2 .= replace.(D2.ell2, r"^ell2" => "")
+
+# Filter rows where `add_plant` is true
+D2 = filter(row -> row[:add_plant], D2)
+
+
+# drop primary assembly site (ell) and then rename the additional sites as ell, so we can append
+# Remove the `ell` column
+select!(D2, Not(:ell))
+# Rename `ell2` to `ell`
+rename!(D2, :ell2 => :ell)
+
+#append the additional sites, fill in add_plant as false for the final_assembly1 sites: 4788 obs now : 4666+122
+# Step 1: Append the DataFrames, ensuring all columns are included
+DR_combined = vcat(DR, D2; cols=:union)
+# Step 2: Replace missing values in `add_plant` with `false`
+DR_combined.add_plant .= coalesce.(DR_combined.add_plant, false)
