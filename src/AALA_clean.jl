@@ -3,6 +3,7 @@ using DataFrames
 using DataFramesMeta
 using StatsBase
 using Statistics
+using IterTools
 
 #problème de réplication des lignes 100-107 qui epêche d'avoir de bon résulats à partir de la ligne 142. 
 # Charger les données depuis le fichier CSV
@@ -312,9 +313,9 @@ US2 = unique(
 
 USCAMX2 = union(union(US2, CA2), MX2)
 
-#ligne 99 et 107 : j'y arrive pas
 
 #summary statistics  for the us_ca_shr column in a DataFrame, filtered by whether a specified assembly location 
+    filtered1 = filter(row -> row[:final_assembly1] in USCAMX, eachrow(DR))
     filtered1_us_ca_shr = [row[:us_ca_shr] for row in filtered1]
     # Filter rows where `final_assembly2` is in `USCAMX2` and not missing
     filtered2 = filter(row -> !ismissing(row[:final_assembly2]) && row[:final_assembly2] in USCAMX2, eachrow(DR))
@@ -551,7 +552,7 @@ for i in 1:nrow(DR)
     end
 end
 
-# Step 2: Summarize `mx_shr_rem` for NAFTA assembly rows
+# Summarize `mx_shr_rem` for NAFTA assembly rows
 # Generate summary statistics for `mx_shr_rem` for NAFTA assembly rows
 # Filter rows where `nafta_assembly` is true
 filtered_rows = filter(row -> row[:nafta_assembly], eachrow(DR))
@@ -587,6 +588,7 @@ con_means = combine(
 )# Group by `ell` and calculate the mean of `mx_shr_rem`
 println("Conditional means by group:")
 println(con_means)
+
 
 # Calculate the median of `mx_shr_rem` for each `ell` group where `nafta_assembly` is true
 filtered_DR = filter(row -> row[:nafta_assembly], eachrow(DR)) # Filter rows where `nafta_assembly` is true
@@ -632,25 +634,53 @@ end # Replace `missing` values in `mx_shr_con` with 0 (conservative guess)
 
 DR[!, :mx_shr_lib] = DR[!, :mx_shr_con] # Create a new column `mx_shr_lib` as a copy of `mx_shr_con`
 
+#revoir à partir d'ici
 # liberal assumption for mexican assembly
-
-# Step 1: Update `mx_shr_lib` where `nafta_assembly` is true, `mx_shr` is missing, and `other1_shr` is also missing
 for i in 1:nrow(DR)
     if DR[i, :nafta_assembly] && ismissing(DR[i, :mx_shr]) && ismissing(DR[i, :other1_shr])
         DR[i, :mx_shr_lib] = (100.0 - DR[i, :us_ca_shr]) * DR[i, :mx_shr_rem_mn]
     end
-end
-
-# Step 2: Update `mx_shr_lib` where `nafta_assembly` is true, `mx_shr` is missing, and `other1_shr` is not missing
+end # Update `mx_shr_lib` where `nafta_assembly` is true, `mx_shr` is missing, and `other1_shr` is also missing
 for i in 1:nrow(DR)
     if DR[i, :nafta_assembly] && ismissing(DR[i, :mx_shr]) && !ismissing(DR[i, :other1_shr])
         DR[i, :mx_shr_lib] = (100.0 - DR[i, :us_ca_shr] - DR[i, :other1_shr]) * DR[i, :mx_shr_rem_mn]
     end
-end
+end #Update `mx_shr_lib` where `nafta_assembly` is true, `mx_shr` is missing, and `other1_shr` is not missing
 
-# Step 3: Cap `mx_shr_lib` at 14 where `nafta_assembly` is true, `mx_shr` is missing, and `mx_shr_lib >= 15`
 for i in 1:nrow(DR)
     if DR[i, :nafta_assembly] && ismissing(DR[i, :mx_shr]) && !ismissing(DR[i, :mx_shr_lib]) && DR[i, :mx_shr_lib] >= 15
         DR[i, :mx_shr_lib] = 14.0
     end
+end# Cap `mx_shr_lib` at 14 where `nafta_assembly` is true, `mx_shr` is missing, and `mx_shr_lib >= 15`
+
+# Create Cartesian product of `ell` and assumptions
+# Define the vectors
+
+# Define the vectors
+ell = ["US", "CA", "MX"]
+assump = ["con", "lib"]
+
+# Generate the Cartesian product
+cartesian_product = collect(product(ell, assump))
+
+# Convert the Cartesian product to a DataFrame
+it = DataFrame([(p[1], p[2]) for p in cartesian_product], [:ell, :assump])
+
+# Display the resulting DataFrame
+println(it)
+
+# Function to summarize the `mx_shr_*` columns
+function summarize_shares(DR::DataFrame, ell_value::String, assumption::String)
+    filtered_rows = filter(row -> row[:ell] == ell_value, eachrow(DR))
+    column_name = Symbol("mx_shr_" * assumption)
+    if column_name in names(DR)
+        stats = describe(skipmissing(filtered_rows[!, column_name]))
+        println("Summary for ell=$ell_value, assumption=$assumption:")
+        println(stats)
+    else
+        println("Column $(column_name) not found in DataFrame.")
+    end
 end
+
+
+#je me suis arrétée à la ligne 169, il en reste que 13 mais je suis trop crevée j'arrive plus trop à avancer.
