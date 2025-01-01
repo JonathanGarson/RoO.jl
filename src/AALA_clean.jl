@@ -309,8 +309,99 @@ US2 = unique(
 USCAMX2 = union(union(US2, CA2), MX2)
 
 #ligne 99 et 107 : j'y arrive pas
+filtered1 = filter(row -> row[:final_assembly1] in USCAMX, eachrow(DR))
+filtered1_us_ca_shr = [row[:us_ca_shr] for row in filtered1]
 
-#
+# Filter rows where `final_assembly2` is in `USCAMX2` and not missing
+filtered2 = filter(row -> !ismissing(row[:final_assembly2]) && row[:final_assembly2] in USCAMX2, eachrow(DR))
+
+# Extract the `us_ca_shr` values from the filtered rows
+filtered2_us_ca_shr = [row[:us_ca_shr] for row in filtered2]
+# Summary function
+function summarize(data)
+    nonmissing_data = skipmissing(data)
+    return Dict(
+        "mean" => mean(nonmissing_data),
+        "min" => minimum(nonmissing_data),
+        "max" => maximum(nonmissing_data),
+        "missing_count" => count(ismissing, data),
+        "nonmissing_count" => count(!ismissing, data)
+    )
+end
+
+# Summarize filtered results
+summary1 = summarize(filtered1_us_ca_shr)
+summary2 = summarize(filtered2_us_ca_shr)
+
+println("Summary for final_assembly1 in USCAMX:")
+println(summary1)
+
+println("Summary for final_assembly2 in USCAMX2:")
+println(summary2)
+
+# mex is never listed under BOTH others.
+filtered_rows = filter(row -> 
+    !ismissing(row[:other1_who]) && occursin("M", row[:other1_who]) &&
+    !ismissing(row[:other2_who]) && occursin("M", row[:other2_who]),
+    eachrow(DR)
+)
+
+# Count the filtered rows
+count2 = length(filtered_rows)
+
+DR[!, :mx_shr] = Vector{Union{Missing, Int}}(missing, nrow(DR))
+# Update `mx_shr` where `other1_who` contains "M"
+for i in 1:nrow(DR)
+    if !ismissing(DR[i, :other1_who]) && occursin("M", DR[i, :other1_who])
+        DR[i, :mx_shr] = DR[i, :other1_shr]
+    end
+end
+
+#summary uscamx
+# Step 1: Filter rows where `final_assembly1` is in `USCAMX`
+filtered_rows = filter(row -> row[:final_assembly1] in USCAMX, eachrow(DR))
+
+# Step 2: Extract `mx_shr` values for the filtered rows
+mx_shr_values = [row[:mx_shr] for row in filtered_rows]
+
+# Step 3: Summarize the `mx_shr` column
+summary_stats = Dict(
+    "mean" => mean(skipmissing(mx_shr_values)),
+    "min" => minimum(skipmissing(mx_shr_values)),
+    "max" => maximum(skipmissing(mx_shr_values)),
+    "missing_count" => count(ismissing, mx_shr_values),
+    "nonmissing_count" => count(!ismissing, mx_shr_values)
+)
+
+println("Summary statistics for `mx_shr` where `final_assembly1` is in USCAMX:")
+println(summary_stats)
+
+# Step 1: Filter rows where `final_assembly1` is in `MX`
+filtered_rows = filter(row -> row[:final_assembly1] in MX, eachrow(DR))
+# Convert the filtered rows back into a DataFrame
+filtered_df = DataFrame(filtered_rows)
+
+# Step 2: Summarize the `mx_shr` column
+summary_stats = Dict(
+    "mean" => mean(skipmissing(filtered_rows.mx_shr)),
+    "min" => minimum(skipmissing(filtered_rows.mx_shr)),
+    "max" => maximum(skipmissing(filtered_rows.mx_shr)),
+    "missing_count" => count(ismissing, filtered_rows.mx_shr),
+    "nonmissing_count" => count(!ismissing, filtered_rows.mx_shr)
+)
+
+println("Summary statistics for `mx_shr` where `final_assembly1` is in MX:")
+println(summary_stats)
+
+DR[!, :mx_shr] = Vector{Union{Missing, Float64}}(missing, nrow(DR))
+for i in 1:nrow(DR)
+    if !ismissing(DR[i, :other2_who]) && occursin("M", DR[i, :other2_who])
+        DR[i, :mx_shr] = DR[i, :other2_shr]
+    end
+end
+
+#voir lignes 106-107
+
 #Nafta assembly location 1 countries
 DR.ell = [
     ismissing(final_assembly1) ? missing :
@@ -384,3 +475,7 @@ rename!(D2, :ell2 => :ell)
 DR_combined = vcat(DR, D2; cols=:union)
 # Step 2: Replace missing values in `add_plant` with `false`
 DR_combined.add_plant .= coalesce.(DR_combined.add_plant, false)
+
+#
+# Now starts the (complex) bounding of Mexican share (which is not a variable per se)
+#
