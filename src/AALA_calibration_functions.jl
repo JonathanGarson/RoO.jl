@@ -199,6 +199,79 @@ end
 # 2. Welfare calculations using chi 
 
 # Main function for simulating lambda and alpha =================================
+# TO BE CONSISTENT PARAMETERS MUST BE STORED IN DICTIONARY ON THE MODEL OF THE CALIBRATION
+
+function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
+"""
+Simulate the lambda and alpha values for the AALA model.
+
+Parameters
+----------
+
+Returns
+-------
+results : Dict
+    A dictionary containing the results of the simulation.
+"""
+
+    # We draw the three dimensions of heterogeneity :
+    # delta : substituability of foreing vers domestic imput
+    delta = rand(LogNormal(param_grid[:mu], param_grid[sigma]), param_est[:num_obs]) #always firm specific
+
+    # tau, tauQ : tariff from imports
+    tau = rand(tau, param_est[:num_obs]) #tau is in a dictionnary, which one is it?
+    tauQ = rand(tauQ, param_est[:num_obs]) #tauQ is in a dictionnary, which one is it? 
+
+    # alpha : share of local production before measure
+    alpha = ubeta_draws(param_est[:num_obs], mu_alpha, conc_alpha)
+
+    # Compute costs
+    lambda_R = lambda_RCR(RCR, alpha) # firm specific if alpha is heterogenous
+    lambda_U = lambda_U(delta, theta)
+    C_R = C_comply(lambda_R, delta, theta)
+    C_u = C_U(delta, theta)
+    comply_cost = C_tile(lambda_R, delta, theta).^(1-alpha) #modified version from the authors (l.133)
+
+    # Condition compliance
+    comply_con = (comply_cost .<= tau) .& (lambda_U .<= lambda_R)
+    comply_uncon = lambda_U  .>= lambda_R
+    noncomp = 1-comply_con-comply_uncon
+    compliance = 
+        ifelse.(comply_con .== true, "CC",
+        ifelse.(comply_uncon .== true, "CU",
+        ifelse.(noncomp .== true, "NC")))
+
+    # Dummy for formulation of if/else
+    lambda_true = lambda_R .* comply_con .+ lambda_U .* (1 .- comply_con)
+    chi_true = chi_lambda(lambda_R, delta, theta).*comply_con .+ lambda_U .* (1 .- comply_con)
+    cost_true = comply_con .* C_R.^(1-alpha) .+ comply_uncon.*C_u.^(1-alpha) .+ noncomp.*tau.*(C_u.^(1-alpha)) 
+    # add on error
+    lambda_model = ubeta_draws(N, lambda_true, conc_err)
+    chi_model = chi_true
+    RCS = alpha .* (1 .- lambda_true) .+ lambda_true # regional content share
+
+    # Store the results in a dictionary and return it
+    return results = Dict(
+        :lambda_U => lambda_U,
+        :lambda_R => lambda_R,
+        :lambda_model => lambda_model,
+        :chi_model => chi_model,
+        :RCS => RCS,
+        :cost_true => cost_true,
+        :comply_cost => comply_cost,
+        :compliance => compliance,
+        :CC_frac => mean(comply_con),
+        :CU_frac => mean(comply_uncon),
+        :alpha_mean => mean(alpha),
+        :alpha_rng => extrema(alpha), 
+        :delta_rng => extrema(delta), 
+        :tau_rng => extrema(tau),     
+        :alpha => alpha,
+        :tau => tau,
+        :tauQ => tauQ,
+        :delta => delta)
+end
+
 function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
 """
 Simulate the lambda and alpha values for the AALA model.
@@ -230,15 +303,16 @@ results : Dict
     A dictionary containing the results of the simulation.
 """
 
-
 # We draw the three dimensions of heterogeneity :
-# - delta : substituability of foreing vers domestic imput
-# - tau, tauQ : tariff from imports
-# - alpha : share of local production before measure
-    delta = rand(LogNormal(mu, sigma), N) #always firm specific
-    tauDT = tau_data[sample(1:length(tau_data), N, replace=true)] #always firm specific
-    tau = select(tauDT, "tau") # not sure about this part
-    tauQ = select(tauDT, "tauQ") # not sure about this part 
+# delta : substituability of foreing vers domestic imput
+delta = rand(LogNormal(mu, sigma), N) #always firm specific
+
+# tau, tauQ : tariff from imports
+tauDT = tau_data[sample(1:length(tau_data), N, replace=true)] #always firm specific
+tau = @select(tauDT, "tau") # not sure about this part
+tauQ = @select(tauDT, "tauQ") # not sure about this part 
+
+# alpha : share of local production before measure
     alpha = ubeta_draws(N, mu_alpha, conc_alpha)
 
     # Compute costs
@@ -526,7 +600,7 @@ function loss_fun_alpha(; params_glob::Dict, param_est::Dict, num_obs::Int64, DR
     sim_out = sim_lambda_alpha(RCR = params_glob[:RCR], theta = params_glob[:theta], mu_alpha = params_glob[:mu_alpha], tau_data = params_glob[:tau], 
                                mu = param_est[:mu], sigma = sqrt.(abs.(param_est[:sigma]).^2),
                                mu_err = param_est[:mu_err], sigma_err = sqrt.(abs.(param_est[:sigma_err]).^2), 
-                               conc_alpha = param_est[:conc_alpha], N=num_obs*20)
+                               conc_alpha = param_est[:conc_alpha], N=num_obs*20, tau_data = )
     lambda_sim = 100 .* sim_out[:lambda_model]
     lambda_sim_d = kde(sim_out[:lambda_model])
 
