@@ -80,3 +80,27 @@ df_grid_params = DataFrame(grid_params, [:sigma, :alpha, :conc_err])
 
 # MODEL RESOLUTION ========================================================
 
+@chain df_grid_params begin
+    @transform!(:theta = theta_base)
+    @transform!(:RCR = RCR_pct)
+    @transform!(:mu = mu)
+    @transform!(:tau = tau)
+    @transform!(:tauQ = tauQ)
+    @transform!(:num_obs = num_obs)
+    @transform!(:CAMUS = CAMUS)
+    @transform!(:DD = DD)
+    @transform!(:calib_params = calib_params)
+    @transform!(:gen_figs = gen_figs)
+    @transform!(:dist_alpha = dist_alpha)
+    @transform!(:DR = DR)
+    @transform!(:DC = DC)
+    @transform!(:alpha_base = alpha_base)
+    @transform!(:conc_err = conc_err)
+    @transform!(:calib_year = calib_year)
+    @byrow begin
+        @transform!(:sigma = :sigma, :alpha = :alpha, :conc_err = :conc_err)
+        @map(AALA_calibration_brute_force)
+    end
+end
+
+results = 

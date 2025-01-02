@@ -49,10 +49,10 @@ params$tau <- data.table(tau=DC$tauD,tauQ=1)
   #
   # test <- brute_force_4par(0) # check it works for mu= 0 before launching full search
   tic()
-  # DT.results <- mclapply(mu.grid,brute_force_4par,mc.cores = detectCores()-2) |> rbindlist()
-  # cl <- makeCluster(detectCores() - 2)
-  # DT.results <- parLapply(cl, mu.grid, brute_force_4par) |> rbindlist()
-  DT.results <- mclapply(mu.grid,brute_force_4par,mc.cores = 1) |> rbindlist()
+  DT.results <- mclapply(mu.grid,brute_force_4par,mc.cores = detectCores()-2) |> rbindlist()
+  # # cl <- makeCluster(detectCores() - 2)
+  # # DT.results <- parLapply(cl, mu.grid, brute_force_4par) |> rbindlist()
+  # DT.results <- mclapply(mu.grid,brute_force_4par,mc.cores = 1) |> rbindlist()
   toc()
   #
   DT.results[order(loss)] |> head(n=10)

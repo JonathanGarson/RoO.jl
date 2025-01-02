@@ -200,6 +200,37 @@ end
 
 # Main function for simulating lambda and alpha =================================
 function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
+"""
+Simulate the lambda and alpha values for the AALA model.
+
+Parameters
+----------
+RCR : Float64
+    The regional content ratio.
+mu : Float64
+    The mean of the log-normal distribution for delta.
+sigma : Float64
+    The standard deviation of the log-normal distribution for delta.
+theta : Float64 
+    The parameter for the CES function.
+tau_data : DataFrame
+    The DataFrame containing the tariff data.
+mu_alpha : Float64
+    The mean of the beta distribution for alpha.
+conc_alpha : Float64
+    The concentration of the beta distribution for alpha.
+conc_err : Float64
+    The concentration of the beta distribution for the error.
+N : Int
+    The number of observations to simulate.
+
+Returns
+-------
+results : Dict
+    A dictionary containing the results of the simulation.
+"""
+
+
 # We draw the three dimensions of heterogeneity :
 # - delta : substituability of foreing vers domestic imput
 # - tau, tauQ : tariff from imports
@@ -335,8 +366,6 @@ function sim_lambda_alpha_DRF(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_al
     Cost_W[:, NCR] = tauR.*omegaR  # rel. cost of non-compliance in the RTA (->USA in fact), where costs are omegaR higher
     Cost_W[:, NCF] = tauF.*omegaF.*(kappa.*(C_U(delta./kappa, theta)/C_u).^(1-alpha)) # rel. cost of non-compliance in Foreing
     
-    # PROBABLY TO BE RECHECKED
-
     # Melt the DataFrame
     idvars = names(Cost_W)[1:13]
     Cost_L = stack(Cost_W, [:CDC, :NCD, :NCR, :NCF], id_vars = idvars , variable_name=:choice, value_name=:relcost)
@@ -344,16 +373,18 @@ function sim_lambda_alpha_DRF(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_al
 
     # Compute minimum cost
     Cost_min = @chain Cost_L begin
-        groupby(idvars)
-        @combine(:choice => first(:choice), :relcost => first(:relcost))
+        @groupby(idvars)
+        @combine(
+            :choice = first(:choice), 
+            :relcost = first(:relcost))
     end
 
     # Modify choice based on conditions
     # important: when relcost is one and choice is CD, 
     # then complying is unconstrained
     @chain Cost_min begin
-        @where :relcost .== 1 .&& :choice .== "CDC"
-        @transform!(:choice => "CDU")
+        @rsubset(:relcost .== 1, :choice .== "CDC")
+        @transform!(:choice = "CDU")
     end
     
     # Compute costs in levels, modified to include alpha
@@ -389,10 +420,10 @@ function sim_lambda_alpha_DRF(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_al
 end
 
 # FUNCTIONS FOR THE LAFFER CURVE ===============================================
-# !!!!!!!! problem ici 
+
 function sim_avg_RCS_alpha(RCR, theta, mu, sigma, tau_data, alpha, conc_alpha, conc_err, N)
     # Set random seed for reproducibility
-    Random.seed!(140341)
+    Random.seed!(42)
 
     # Call the simulation function with the provided arguments
     sim_out = sim_lambda_alpha(RCR, theta, mu, sigma,
@@ -408,7 +439,7 @@ end
 
 function sim_choice( RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
     # Set random seed for reproducibility
-    Random.seed!(140341)
+    Random.seed!(42)
 
     # Call the simulation function
     sim_out = sim_lambda_alpha(RCR=RCR, mu=mu, sigma=sigma, theta=theta, tau_data=tau_data,
@@ -428,12 +459,69 @@ function sim_choice( RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc
     return DataFrame(RCR=RCR, choices)
 end
 
+function sim_avg_RCS_alpha_DRF(RCR,theta,mu,sigma,tau_data,alpha,conc.alpha,conc.err,N,omegaR,omegaF,kappa)
+    Random.seed!(42)
+
+    sim_out = sim_lambda_alpha_DRF(RCR = RCR,theta=theta,mu=mu,sigma=sigma,
+                                   tau_data=tau_data,alpha=alpha,conc_alpha=conc_alpha,
+                                   conc_err=conc_err,omegaR=omegaR,omegaF=omegaF,kappa=kappa,N=N
+                                   )
+                                
+    RCS = 100 .* sim_out[:RCS]
+    return avg_RCS = mean(RCS)
+end
+
+function sim_choice_DRF(RCR,theta,mu,sigma,tau_data,alpha,conc.alpha,conc.err,N,omegaR,omegaF,kappa)
+    Random.seed!(42)
+
+    sim_out = sim_lambda_alpha_DRF(RCR = RCR,theta=theta,mu=mu,sigma=sigma,
+                                   tau_data=tau_data,alpha=alpha,conc_alpha=conc_alpha,
+                                   conc_err=conc_err,omegaR=omegaR,omegaF=omegaF,kappa=kappa,N=N
+                                   )
+    
+    choices = @chain sim_out begin
+        @groupby(:V_iso_o, :choice)
+        @combine(
+            :N = nrow,
+            :N_USA = sum(:chosen_R == "USA"),
+            :N_CAN = sum(:chosen_R == "CAN"),
+            :N_MEX = sum(:chosen_R == "MEX")
+        )
+    end
+    
+    return DataFrame(RCR=RCR, choices)
+end 
+
 # LOSS FUNCTIONS ===============================================================
 
 # Loss functions for  parameters to estimate. theta is now assumed fixed in all of those ====
 # This function is supposed to provide the same output as loss_fun_4par but include more parameters with the idea of improving reproducibility
 function loss_fun_alpha(; params_glob::Dict, param_est::Dict, num_obs::Int64, DR::DataFrame, DS::DataFrame, CAMUS::Vector)
-    seed(123)
+    """
+    Compute the loss function for the calibration of the AALA model.
+
+    Parameters
+    ----------
+    params_glob : Dict
+        A dictionary containing the global parameters of the model.
+    param_est : Dict
+        A dictionary containing the estimated parameters of the model.
+    num_obs : Int
+        The number of observations in the data.
+    DR : DataFrame
+        The DataFrame containing the data (real) density.
+    DS : DataFrame
+        The DataFrame containing the simulated data density.
+    CAMUS : Vector
+        A vector containing the countries to consider.
+
+    Returns
+    -------
+    fit : Float64
+        The loss value for the given parameters.
+    """
+    
+    Random.seed!(42)
 
     sim_out = sim_lambda_alpha(RCR = params_glob[:RCR], theta = params_glob[:theta], mu_alpha = params_glob[:mu_alpha], tau_data = params_glob[:tau], 
                                mu = param_est[:mu], sigma = sqrt.(abs.(param_est[:sigma]).^2),
@@ -443,21 +531,23 @@ function loss_fun_alpha(; params_glob::Dict, param_est::Dict, num_obs::Int64, DR
     lambda_sim_d = kde(sim_out[:lambda_model])
 
     # Density of the simulated data
-    DS = DataFrame(:x = lambda_sim_d.x, :y = lambda_sim_d.density)
+    DS = DataFrame(:x => lambda_sim_d.x, :y => lambda_sim_d.density)
     DS[!, x_round] = round.(DS[!, :x], digits=2)
     DS = @chain DS begin
-        @filter(:x_round .>= 0.00 .&& :x_round .<= 100.00)
+        @subset(:x_round .>= 0.00 , :x_round .<= 100.00)
         @groupby(:x_round)
         @combine(:den_sim = mean(:y))
     end 
 
     # Density of the observed data
     lambda_data_d = @chain DR begin
-        @filter(!ismissing(:nafta_shr) && :ell in CAMUS)  # Filter rows
+        @subset(!ismissing(:nafta_shr) , :ell in CAMUS)  # Filter rows
         @select(:nafta_shr)                              # Select relevant column
-        x -> kde(x.nafta_shr)                            # Perform density estimation
-        x -> DataFrame(x = x.x, density = x.density)     # Create output DataFrame
+        @combine(
+            :kernell_x = kde(nafta_shr).x, 
+            :kernell_y = kde(nafta_shr.density)) # Perform density estimation
     end
+
     DS = join(DD, DS, on = :x_rnd, kind = :inner)
     
     # Compute the distance (loss) between the two densities
@@ -470,7 +560,7 @@ end
 # BRUT FORCE FUNCTION ==========================================================
 # TEMPORARY FUNCTION FOR TESTING PURPOSES
 
-function brut_force_optim(; mu_val, params_glob::Dict, param_est::Dict, param_grid, DR::DataFrame, DS::DataFrame, CAMUS::Vector, num_obs::Int64)
+function brut_force_optim(; mu_val, params_glob::Dict, param_est::Dict, param_grid::DataFrame, DR::DataFrame, DS::DataFrame, CAMUS::Vector, num_obs::Int64)
     mu_rep = reapeat([mu_val], num_obs)
 
     # Compute loss for each combination of parameters
@@ -478,23 +568,23 @@ function brut_force_optim(; mu_val, params_glob::Dict, param_est::Dict, param_gr
         (sigma, alphacon, errcon) -> loss_fun_alpha(
             params_glob = params_glob,
             param_est = param_est,
-        param_grid.sigma,
-        param_grid.alphacon,
-        param_grid.errcon,
-        num_obs = num_obs,
-        DR = DR,
-        DS = DS, 
-        CAMUS = CAMUS
+            param_grid.sigma,
+            param_grid.alphacon,
+            param_grid.errcon,
+            num_obs = num_obs,
+            DR = DR,
+            DS = DS, 
+            CAMUS = CAMUS
         )
     )
 
     # Create and return a DataFrame
     return DataFrame(
-        mu = mu_rep,
-        sigma = param_grid.sigma,
-        cona = param_grid.alphacon,
-        cone = param_grid.errcon,
-        loss = loss
+        :mu => mu_rep,
+        :sigma => param_grid.sigma,
+        :cona => param_grid.alphacon,
+        :cone => param_grid.errcon,
+        :loss => loss
     )
 end
 

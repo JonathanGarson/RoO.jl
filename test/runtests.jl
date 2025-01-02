@@ -44,6 +44,17 @@ include("../src/AALA_calibration_functions.jl")
     # Test ubeta_draws
     @test ubeta_draws(1, 0.5, 0.5) isa Union{Float64, AbstractVector{Float64}}
 
+    # MAIN FUNCTIONS
+    # sim lambda
+
+    # sim_lambda_alpha
+    
+    # sim_lambda_alpha_o
+
+    # sim_lambda_alpha_DRF
+    
+    
+
 end
 
 # We test for the calibration of the model ==========================================================
