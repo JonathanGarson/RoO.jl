@@ -14,21 +14,38 @@ using StatsBase
 # BASE FUNCTIONS ==============================================================
 
 #lambda_R as a function of RCR (expressed as cost share incl assembly), for a given alpha  
-function lambda_RCR(RCR::Float64, alpha::Union{Float64, AbstractVector{Float64}})
-    if isa(alpha, AbstractVector)
-        # Handle vector input
+# function lambda_RCR(RCR::Union{Float64, AbstractVector{Float64}}, alpha::Union{Float64, AbstractVector{Float64}})
+#     if isa(alpha, AbstractVector)
+#         # Handle vector input
+#         return [0.0 <= a < RCR ? (RCR - a) / (1 - a) : 0.0 for a in alpha]
+#     else
+#         # Handle scalar input
+#         return 0.0 <= alpha < RCR ? (RCR - alpha) / (1 - alpha) : 0.0
+#     end
+# end
+
+function lambda_RCR(RCR::Union{Float64, AbstractVector{Float64}}, alpha::Union{Float64, AbstractVector{Float64}})
+    if isa(alpha, AbstractVector) && isa(RCR, AbstractVector)
+        # Handle vector-vector input
+        return [(0.0 <= a < r ? (r - a) / (1 - a) : 0.0) for (a, r) in zip(alpha, RCR)]
+    elseif isa(alpha, AbstractVector)
+        # Handle vector alpha and scalar RCR
         return [0.0 <= a < RCR ? (RCR - a) / (1 - a) : 0.0 for a in alpha]
+    elseif isa(RCR, AbstractVector)
+        # Handle scalar alpha and vector RCR
+        return [0.0 <= alpha < r ? (r - alpha) / (1 - alpha) : 0.0 for r in RCR]
     else
-        # Handle scalar input
+        # Handle scalar alpha and scalar RCR
         return 0.0 <= alpha < RCR ? (RCR - alpha) / (1 - alpha) : 0.0
     end
 end
+
 
 #Je pense que cette fonction ne concerne pas des vecteurs, 
 # sinon i faudrait ajouter des broadcasts
 
 # chi_R as a function  of lambda_R 
-function chi_lambda(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Union{Float64, AbstractVector{Float64}}, theta::Float64)
+function chi_lambda(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
     # Compute denom element-wise
     denom = 1 .+ ((1 ./ lambda_R .- 1) ./ delta) .^ (theta / (theta + 1))
 
@@ -37,12 +54,14 @@ function chi_lambda(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Un
 end
 
 # Unconstrained parts share
-function chi_U(delta::Union{Float64, AbstractVector{Float64}}, theta::Float64)
+function chi_U(delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
     return 1 ./ (1 .+ delta.^(-theta))
 end
 
 # Unconstrained costs share : uses the EK miracle 
-const lambda_U = chi_U
+function lambda_U(delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
+    return 1 ./ (1 .+ delta.^(-theta))
+end
 
 # #Analytic density of chi_U (and lambda_U) for unconstrained firms
 function pdf_U(x::Union{Real, AbstractVector}, theta::Float64, mu::Float64, sigma::Float64; pct::Bool=true)
@@ -63,23 +82,14 @@ function pdf_U(x::Union{Real, AbstractVector}, theta::Float64, mu::Float64, sigm
     # Return scaled density if pct is TRUE
     return pct ? g ./ 100 : g
 end
-# Je pense que c'est une option pour exprimer les résultats en pourcentage mais je trouve ça étrange
-# Je pense qu'on devrait typer nos outputs pour éviter les erreurs
 
 # Unconstrained cost : Compute the index using chi_U
-function C_U(delta::Union{Float64, AbstractVector{Float64}}, theta::Float64)
+function C_U(delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
     index = chi_U(delta, theta).^(1 / theta)
     return index
 end
 
-# Cost of compliance 
-# function C_comply(lambda_R::AbstractVector, delta::Float64, theta::Float64)
-#     chi_R = chi_lambda.(lambda_R, delta, theta)
-#     k = (1 + theta) / theta
-#     return chi_R.^k .+ delta .* (1 .- chi_R).^k
-# end
-
-function C_comply(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Union{Float64, AbstractVector{Float64}}, theta::Float64)
+function C_comply(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
     # Ensure lambda_R is always treated as a vector
     chi_R = chi_lambda.(lambda_R, delta, theta)  # Broadcasting over vector
     k = (1 + theta) / theta
@@ -87,7 +97,7 @@ function C_comply(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Unio
 end
 
 # C.tilde is C_comply / C_U
-function C_tilde(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Union{Float64, AbstractVector{Float64}}, theta::Float64)
+function C_tilde(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
     # Compute the threshold lambda_U
     lambda_u = lambda_U(delta, theta)  # lambda_U is chi_U in Julia
     
@@ -103,12 +113,12 @@ function C_tilde(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Union
 end
 
 # Limit of delta star as lambda_R -> 1 (in paper lambda_R -> chi_R, delta_max -> \bar{\delta}(\tau))
-function delta_max(tau::Float64, theta::Float64)
+function delta_max(tau::Float64, theta::Real)
     return (tau.^theta - 1).^(-1 / theta)
 end
 
 # Cutoff delta for complying
-function delta_star(lambda_R::Union{Float64, AbstractVector{Float64}}, tau::Float64, theta::Float64)
+function delta_star(lambda_R::Union{Float64, AbstractVector{Float64}}, tau::Float64, theta::Real)
     # Define the auxiliary function ufn
     ufn = x -> C_tilde(lambda_R, x, theta) - tau
     
@@ -124,7 +134,7 @@ function delta_circ(lambda_R::Union{Float64, AbstractVector{Float64}})
     return (lambda_R.^(-1)-1).^(-1/theta-10)
 end # module
 
-# Function for generating heterogenous alpha constrained between 0 and 1 ======
+# Function for generating heterogenous alpha constrained between 0 and 1 
 function beta_draws(N::Int64, centre::Float64, concentration::Float64)
     # Set the parameters & limits
     a = 0
@@ -134,64 +144,61 @@ function beta_draws(N::Int64, centre::Float64, concentration::Float64)
     return a .+ (c - a) .* x
 end 
 
-# Function for generating distributions bounded between 0 and 1 =================
-function ubeta_draws(N::Int64, centre::Float64, concentration::Float64)
-    # Validate that centre is less than 1
-    if centre >= 1
-        throw(ArgumentError("The parameter `centre` must be less than 1, but got $centre."))
-    end
+# Function for generating distributions bounded between 0 and 1
+# function ubeta_draws(N::Int64, centre::Vector{Float64}, concentration::Int64)
+#     # Validate that centre is less than 1
+#     if centre .>= 1
+#         throw(ArgumentError("The parameter `centre` must be less than 1, but got $centre."))
+#     end
 
-    # Generate random values from Beta distribution
-    return rand(Beta(centre * concentration, (1 - centre) * concentration), N)
-end
+#     # Generate random values from Beta distribution
+#     return rand(Beta(centre * concentration, (1 - centre) * concentration), N)
+# end
 
-# TEST ==========================================================
-# Lambda simulations simplest version =========================================
-
-function sim_lambda(RCR, mu, sigma, theta, tau_data, alpha_lo, alpha_hi, alpha_a, alpha_b, N)
-    #  Draw the three dimensions of heterogeneity : 
-    # - delta : substituability of foreing vers domestic imput 
-    # - alpha : share of local production
-    # - lambda_R : cost share of compliance to RCR (regional content ratio)
-    delta = rand(LogNormal(mu, sigma), N) #always firm specific
-    alpha = alpha_lo .+ rand(Beta(alpha_a, alpha_b), N) .* (alpha_hi - alpha_lo)
-    lambda_R = lambda_RCR(RCR, alpha) # firm specific if alpha is heterogenous
-
-    # Compute firm choices given constraints
-    if length(tau_data) == 1
-        tau = tau_data[1]  # Use the single value directly
-    else
-        tau = rand(tau_data, N)  # Sample N values from tau_data
-    end
-
-    # Compute the parameter lambda_model
-    lambda_u = lambda_U(delta, theta)
+function ubeta_draws(N::Int64, centre::Union{Float64, Vector{Float64}}, concentration::Real)
+    if typeof(centre) <: Vector
+        # Validate all `centre` values are less than 1
+        if any(c -> c >= 1, centre)
+            throw(ArgumentError("All `centre` values must be less than 1, but got $centre."))
+        end
         
-    comply_cost = C_tilde(lambda_R, delta, theta)
-
-    comply_con = (comply_cost .<= tau) .& (lambda_u .<= lambda_R) # comply if cost penalty < tariff penalty and compliance is constrained if ideal lambda < required lambda
-    
-    # Compute the lambda model
-    lambda_model = lambda_R .* Int.(comply_con) .+ lambda_u .* (1 .- Int.(comply_con)) # if comply_con is true, lambda_model = lambda_R, else lambda_model = lambda_U
-    
-    RCS = alpha .* (1 .- lambda_model) .+ lambda_model # regional content share 
-
-    # Store the results in a dictionary and return it
-    return result = Dict(
-    :lambda_U => lambda_u,
-    :lambda_model => lambda_model,
-    :lambda_R => lambda_R,
-    :RCS => RCS,
-    :comply_cost => comply_cost,
-    :comply_frac => mean(comply_con),
-    :alpha => alpha,
-    :alpha_rng => extrema(alpha),
-    :delta_rng => extrema(delta),
-    :tau_rng => extrema(tau)
-) 
+        # Generate random values for each `centre` value and flatten the result
+        return vcat([rand(Beta(c * concentration, (1 - c) * concentration), N) for c in centre]...)
+    else
+        # Single `centre` value
+        if centre >= 1
+            throw(ArgumentError("The parameter `centre` must be less than 1, but got $centre."))
+        end
+        
+        return rand(Beta(centre * concentration, (1 - centre) * concentration), N)
+    end
 end
 
-# Seems to work
+function clean_density_data(df::DataFrame, data_dens_name::Symbol)
+    clean_df = @chain df begin
+        @transform!(:x_round = round.(:kernell_x))  # Round values
+        @rsubset(:x_round >= 0.00, :x_round <= 100.00)  # Filter valid ranges
+        @rsubset(:x_round != -0.0)  # Exclude -0.0
+        @groupby(:x_round)  # Group by x_round
+        @combine(change_name = mean(:kernell_y))  # Dynamically assign column name
+    end
+    rename!(clean_df, [:x_round, data_dens_name])  # Rename columns
+    return clean_df
+end
+
+
+# function clean_density_data(df::DataFrame, data_dens_name::Symbol)
+#     new_name = Dict(:change_name => data_dens_name)
+#     clean_df = @chain df begin
+#         @transform!(:x_round = round.(:kernell_x))
+#         @rsubset(:x_round >= 0.00, :x_round <= 100.00)
+#         @rsubset(:x_round != -0.0)
+#         @groupby(:x_round)
+#         @combine(:change_name = mean(:kernell_y))
+#     end
+#     rename!(clean_df, new_name)
+#     return clean_df
+# end
 
 # MAIN FUNCTIONS ===============================================================
 # This is the main function which gets used for two purposes:
@@ -201,7 +208,7 @@ end
 # Main function for simulating lambda and alpha =================================
 # TO BE CONSISTENT PARAMETERS MUST BE STORED IN DICTIONARY ON THE MODEL OF THE CALIBRATION
 
-function sim_lambda_alpha(; mu::AbstractVector{Float64}, calib_param::Dict, grid_param::DataFrame)
+function sim_lambda_alpha(; mu::Union{Float64, AbstractVector{Float64}}, calib_param::Dict, grid_param::Dict)
 """
 Simulate the lambda and alpha values for the AALA model.
 
@@ -222,43 +229,43 @@ results : Dict
 
     # We draw the three dimensions of heterogeneity :
     # delta : substituability of foreing vers domestic imput
-    delta = rand(LogNormal(mu, grid_param[sigma]), calib_param[:num_obs]) #always firm specific
+    delta = rand(LogNormal(mu, grid_param[:sigma]), calib_param[:num_obs]) #always firm specific
 
     # tau, tauQ : tariff from imports
-    tau = rand(tau, grid_param[:num_obs]) #tau is in a dictionnary, which one is it?
-    tauQ = rand(tauQ, grid_param[:num_obs]) #tauQ is in a dictionnary, which one is it? 
+    tau = rand(calib_param[:tau], calib_param[:num_obs]) #tau is in a dictionnary, which one is it?
+    tauQ = rand(calib_param[:tauQ], calib_param[:num_obs]) #tauQ is in a dictionnary, which one is it? 
 
     # alpha : share of local production before measure
-    alpha = ubeta_draws(grid_param[:num_obs], calib_param[:mu_alpha], grid_param[:conc_alpha])
+    alpha = ubeta_draws(calib_param[:num_obs], calib_param[:mu_alpha], grid_param[:conc_alpha])
 
     # Compute costs
     lambda_R = lambda_RCR(calib_param[:RCR], alpha) # firm specific if alpha is heterogenous
-    lambda_U = lambda_U(delta, calib_param[:theta])
+    lambda_u = lambda_U(delta, calib_param[:theta])
     C_R = C_comply(lambda_R, delta, calib_param[:theta])
     C_u = C_U(delta, calib_param[:theta])
-    comply_cost = C_tile(lambda_R, delta, calib_param[:theta]).^(1-alpha) #modified version from the authors (l.133)
+    comply_cost = C_tilde(lambda_R, delta, calib_param[:theta]).^(1 .-alpha) #modified version from the authors (l.133)
 
     # Condition compliance
-    comply_con = (comply_cost .<= tau) .& (lambda_U .<= lambda_R)
-    comply_uncon = lambda_U  .>= lambda_R
-    noncomp = 1-comply_con-comply_uncon
+    comply_con = (comply_cost .<= tau) .& (lambda_u .<= lambda_R)
+    comply_uncon = lambda_u  .>= lambda_R
+    noncomp = 1 .- comply_con .- comply_uncon
     compliance = 
         ifelse.(comply_con .== true, "CC",
         ifelse.(comply_uncon .== true, "CU",
-        ifelse.(noncomp .== true, "NC")))
+        ifelse.(noncomp .== true, "NC", missing)))
 
     # Dummy for formulation of if/else
-    lambda_true = lambda_R .* comply_con .+ lambda_U .* (1 .- comply_con)
-    chi_true = chi_lambda(lambda_R, delta, calib_param[:theta]).*comply_con .+ lambda_U .* (1 .- comply_con)
-    cost_true = comply_con .* C_R.^(1-alpha) .+ comply_uncon.*C_u.^(1-alpha) .+ noncomp.*tau.*(C_u.^(1-alpha)) 
+    lambda_true = lambda_R .* comply_con .+ lambda_u .* (1 .- comply_con)
+    chi_true = chi_lambda(lambda_R, delta, calib_param[:theta]).*comply_con .+ lambda_u .* (1 .- comply_con)
+    cost_true = comply_con .* C_R.^(1 .- alpha) .+ comply_uncon.*C_u.^(1 .- alpha) .+ noncomp.*tau.*(C_u .^ (1 .- alpha)) 
     # add on error
-    lambda_model = ubeta_draws(calib_param[:N], lambda_true, grid_param[:conc_err])
+    lambda_model = ubeta_draws(calib_param[:num_obs], lambda_true, grid_param[:conc_err])
     chi_model = chi_true
     RCS = alpha .* (1 .- lambda_true) .+ lambda_true # regional content share
 
     # Store the results in a dictionary and return it
     return results = Dict(
-        :lambda_U => lambda_U,
+        :lambda_U => lambda_u,
         :lambda_R => lambda_R,
         :lambda_model => lambda_model,
         :chi_model => chi_model,
@@ -486,7 +493,7 @@ end
 
 # Loss functions for  parameters to estimate. theta is now assumed fixed in all of those ====
 # This function is supposed to provide the same output as loss_fun_4par but include more parameters with the idea of improving reproducibility
-function loss_fun_alpha(; mu::AbstractVector{Float64}, calib_param::Dict, grid_param::DataFrame, DD::DataFrame)
+function loss_fun_alpha(; mu::Union{Float64, AbstractVector{Float64}}, calib_param::Dict, grid_param::Dict, DD::DataFrame)
     """
     Compute the loss function for the calibration of the AALA model.
 
@@ -511,21 +518,23 @@ function loss_fun_alpha(; mu::AbstractVector{Float64}, calib_param::Dict, grid_p
 
     sim_out = sim_lambda_alpha(mu = mu, calib_param = calib_param, grid_param = grid_param)
 
-    # sim_out = sim_lambda_alpha(RCR = params_glob[:RCR], theta = params_glob[:theta], mu_alpha = params_glob[:mu_alpha], tau_data = params_glob[:tau], 
-    #                            mu = param_est[:mu], sigma = sqrt.(abs.(param_est[:sigma]).^2),
-    #                            mu_err = param_est[:mu_err], sigma_err = sqrt.(abs.(param_est[:sigma_err]).^2), 
-    #                            conc_alpha = param_est[:conc_alpha], N=num_obs*20, tau_data = )
     lambda_sim = 100 .* sim_out[:lambda_model]
     lambda_sim_d = kde(sim_out[:lambda_model])
-
+    
     # Density of the simulated data
-    DS = DataFrame(:x => lambda_sim_d.x, :y => lambda_sim_d.density)
-    DS[!, x_round] = round.(DS[!, :x], digits=2)
-    DS = @chain DS begin
-        @subset(:x_round .>= 0.00 , :x_round .<= 100.00)
-        @groupby(:x_round)
-        @combine(:den_sim = mean(:y))
-    end 
+    DS = DataFrame(:kernell_x => lambda_sim_d.x, :kernell_y => lambda_sim_d.density)
+    # println(size(DS,1))
+
+    DS = clean_density_data(DS, :den_sim)
+    # println(size(DS,1))
+    # println(size(DD,1))
+
+    # DS[!, x_round] = round.(DS[!, :x], digits=2)
+    # DS = @chain DS begin
+    #     @subset(:x_round .>= 0.00 , :x_round .<= 100.00)
+    #     @groupby(:x_round)
+    #     @combine(:den_sim = mean(:y))
+    # end 
 
     # # Density of the observed data
     # CAMUS = ["US", "CN", "MX"]
@@ -538,7 +547,7 @@ function loss_fun_alpha(; mu::AbstractVector{Float64}, calib_param::Dict, grid_p
     # end
 
     # merge data
-    DS = join(DD, DS, on = :x_rnd, kind = :inner)
+    DS = innerjoin(DD, DS, on = :x_round)
     
     # Compute the distance (loss) between the two densities
     den_data = DS.den_data
@@ -550,30 +559,26 @@ end
 # BRUT FORCE FUNCTION ==========================================================
 # TEMPORARY FUNCTION FOR TESTING PURPOSES
 
-function brut_force_optim(; mu_val, params_glob::Dict, param_est::Dict, param_grid::DataFrame, DR::DataFrame, DS::DataFrame, CAMUS::Vector, num_obs::Int64)
-    mu_rep = reapeat([mu_val], num_obs)
-
+function brut_force_optim(; mu_val::AbstractVector{Float64}, calib_param::Dict, grid_param::DataFrame, DD::DataFrame)
+    # the four parameters to estimate are mu, sigma, alphacon, errcon
+    mu_rep = reapeat([mu_val], calib_param[:num_obs])
+    
     # Compute loss for each combination of parameters
     loss = map(
         (sigma, alphacon, errcon) -> loss_fun_alpha(
-            params_glob = params_glob,
-            param_est = param_est,
-            param_grid.sigma,
-            param_grid.alphacon,
-            param_grid.errcon,
-            num_obs = num_obs,
-            DR = DR,
-            DS = DS, 
-            CAMUS = CAMUS
-        )
+            mu = mu_rep,
+            calib_param = calib_param,
+            grid_param = grid_param,
+            DD = DD
+        ),
     )
 
     # Create and return a DataFrame
     return DataFrame(
         :mu => mu_rep,
-        :sigma => param_grid.sigma,
-        :cona => param_grid.alphacon,
-        :cone => param_grid.errcon,
+        :sigma => grid_param.sigma,
+        :cona => grid_param.alphacon,
+        :cone => grid_param.errcon,
         :loss => loss
     )
 end
@@ -671,3 +676,50 @@ end # module
 #         :tauQ => tauQ,
 #         :delta => delta)
 # end
+
+# Lambda simulations simplest version =========================================
+
+# function sim_lambda(RCR, mu, sigma, theta, tau_data, alpha_lo, alpha_hi, alpha_a, alpha_b, N)
+#     #  Draw the three dimensions of heterogeneity : 
+#     # - delta : substituability of foreing vers domestic imput 
+#     # - alpha : share of local production
+#     # - lambda_R : cost share of compliance to RCR (regional content ratio)
+#     delta = rand(LogNormal(mu, sigma), N) #always firm specific
+#     alpha = alpha_lo .+ rand(Beta(alpha_a, alpha_b), N) .* (alpha_hi - alpha_lo)
+#     lambda_R = lambda_RCR(RCR, alpha) # firm specific if alpha is heterogenous
+
+#     # Compute firm choices given constraints
+#     if length(tau_data) == 1
+#         tau = tau_data[1]  # Use the single value directly
+#     else
+#         tau = rand(tau_data, N)  # Sample N values from tau_data
+#     end
+
+#     # Compute the parameter lambda_model
+#     lambda_u = lambda_U(delta, theta)
+        
+#     comply_cost = C_tilde(lambda_R, delta, theta)
+
+#     comply_con = (comply_cost .<= tau) .& (lambda_u .<= lambda_R) # comply if cost penalty < tariff penalty and compliance is constrained if ideal lambda < required lambda
+    
+#     # Compute the lambda model
+#     lambda_model = lambda_R .* Int.(comply_con) .+ lambda_u .* (1 .- Int.(comply_con)) # if comply_con is true, lambda_model = lambda_R, else lambda_model = lambda_U
+    
+#     RCS = alpha .* (1 .- lambda_model) .+ lambda_model # regional content share 
+
+#     # Store the results in a dictionary and return it
+#     return result = Dict(
+#     :lambda_U => lambda_u,
+#     :lambda_model => lambda_model,
+#     :lambda_R => lambda_R,
+#     :RCS => RCS,
+#     :comply_cost => comply_cost,
+#     :comply_frac => mean(comply_con),
+#     :alpha => alpha,
+#     :alpha_rng => extrema(alpha),
+#     :delta_rng => extrema(delta),
+#     :tau_rng => extrema(tau)
+# ) 
+# end
+
+# # Seems to work
