@@ -52,13 +52,6 @@ DD = @chain DR begin
     
 num_obs = size(DD, 1) # 2048 (300 more than in the original paper but no substantial differences in the results)
 
-# DD = @chain DD begin
-#     @transform!(:x_round = round.(:kernell_x))
-#     @rsubset(:x_round in collect(0:100))
-#     @groupby(:x_round)
-#     @combine(:den_data = mean(:kernell_y))
-# end
-
 DD = calibration_functions.clean_density_data(DD, :den_data)
 
 # We store in a dictionnary the different parameters of calibration 
@@ -81,7 +74,6 @@ alpha_con_grid = [1,1.25,1.5,1.75,2,2.25,2.5, 3:20...]
 errcon_grid = [2:25...]
 
 grid_param = IterTools.product(sigma_grid, alpha_con_grid, errcon_grid)
-# df_grid_params = DataFrame(grid_params, [:sigma, :alpha, :conc_err])
 
 # MODEL RESOLUTION ========================================================
 
@@ -97,7 +89,7 @@ results = DataFrame(
 n_total = length(mu_grid)*length(grid_param)
 
 # Loop over mu and the grid
-for mu in mu_grid
+@threads for mu in mu_grid
     for (sigma, alpha, conc_err) in grid_param
         for i in ProgressBar(1:n_total)
             param_batch = Dict(:sigma => sigma, :conc_alpha => alpha, :conc_err => conc_err)
@@ -106,4 +98,3 @@ for mu in mu_grid
         end
     end
 end
-
