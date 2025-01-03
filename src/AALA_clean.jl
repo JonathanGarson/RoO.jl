@@ -4,7 +4,6 @@ using DataFramesMeta
 using StatsBase
 using Statistics
 using IterTools
-using Serialization
 
 
 file_path = "Data/AALA/data_aala_raw.csv"
@@ -777,4 +776,5 @@ open("nafta_shr_lib_con_rev.txt", "w") do file
     end 
     # End redirection automatically at the end of the block
 end
-serialize("Data/RDS_JIE_rev/AALA_rev.jls", DR)
+
+CSV.write("data/AALA_rev.csv", DR)
