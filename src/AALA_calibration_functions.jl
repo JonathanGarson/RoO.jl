@@ -201,12 +201,18 @@ end
 # Main function for simulating lambda and alpha =================================
 # TO BE CONSISTENT PARAMETERS MUST BE STORED IN DICTIONARY ON THE MODEL OF THE CALIBRATION
 
-function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
+function sim_lambda_alpha(; mu::AbstractVector{Float64}, calib_param::Dict, grid_param::DataFrame)
 """
 Simulate the lambda and alpha values for the AALA model.
 
 Parameters
 ----------
+mu : AbstractVector{Float64}
+    The mean of the log-normal distribution for delta.
+calib_param : Dict
+    A dictionary containing the calibration parameters of the model.
+grid_params : DataFrame 
+    A DataFrame containing the grid parameters of the model.
 
 Returns
 -------
@@ -216,21 +222,21 @@ results : Dict
 
     # We draw the three dimensions of heterogeneity :
     # delta : substituability of foreing vers domestic imput
-    delta = rand(LogNormal(param_grid[:mu], param_grid[sigma]), param_est[:num_obs]) #always firm specific
+    delta = rand(LogNormal(mu, grid_param[sigma]), calib_param[:num_obs]) #always firm specific
 
     # tau, tauQ : tariff from imports
-    tau = rand(tau, param_est[:num_obs]) #tau is in a dictionnary, which one is it?
-    tauQ = rand(tauQ, param_est[:num_obs]) #tauQ is in a dictionnary, which one is it? 
+    tau = rand(tau, grid_param[:num_obs]) #tau is in a dictionnary, which one is it?
+    tauQ = rand(tauQ, grid_param[:num_obs]) #tauQ is in a dictionnary, which one is it? 
 
     # alpha : share of local production before measure
-    alpha = ubeta_draws(param_est[:num_obs], mu_alpha, conc_alpha)
+    alpha = ubeta_draws(grid_param[:num_obs], calib_param[:mu_alpha], grid_param[:conc_alpha])
 
     # Compute costs
-    lambda_R = lambda_RCR(RCR, alpha) # firm specific if alpha is heterogenous
-    lambda_U = lambda_U(delta, theta)
-    C_R = C_comply(lambda_R, delta, theta)
-    C_u = C_U(delta, theta)
-    comply_cost = C_tile(lambda_R, delta, theta).^(1-alpha) #modified version from the authors (l.133)
+    lambda_R = lambda_RCR(calib_param[:RCR], alpha) # firm specific if alpha is heterogenous
+    lambda_U = lambda_U(delta, calib_param[:theta])
+    C_R = C_comply(lambda_R, delta, calib_param[:theta])
+    C_u = C_U(delta, calib_param[:theta])
+    comply_cost = C_tile(lambda_R, delta, calib_param[:theta]).^(1-alpha) #modified version from the authors (l.133)
 
     # Condition compliance
     comply_con = (comply_cost .<= tau) .& (lambda_U .<= lambda_R)
@@ -243,100 +249,10 @@ results : Dict
 
     # Dummy for formulation of if/else
     lambda_true = lambda_R .* comply_con .+ lambda_U .* (1 .- comply_con)
-    chi_true = chi_lambda(lambda_R, delta, theta).*comply_con .+ lambda_U .* (1 .- comply_con)
+    chi_true = chi_lambda(lambda_R, delta, calib_param[:theta]).*comply_con .+ lambda_U .* (1 .- comply_con)
     cost_true = comply_con .* C_R.^(1-alpha) .+ comply_uncon.*C_u.^(1-alpha) .+ noncomp.*tau.*(C_u.^(1-alpha)) 
     # add on error
-    lambda_model = ubeta_draws(N, lambda_true, conc_err)
-    chi_model = chi_true
-    RCS = alpha .* (1 .- lambda_true) .+ lambda_true # regional content share
-
-    # Store the results in a dictionary and return it
-    return results = Dict(
-        :lambda_U => lambda_U,
-        :lambda_R => lambda_R,
-        :lambda_model => lambda_model,
-        :chi_model => chi_model,
-        :RCS => RCS,
-        :cost_true => cost_true,
-        :comply_cost => comply_cost,
-        :compliance => compliance,
-        :CC_frac => mean(comply_con),
-        :CU_frac => mean(comply_uncon),
-        :alpha_mean => mean(alpha),
-        :alpha_rng => extrema(alpha), 
-        :delta_rng => extrema(delta), 
-        :tau_rng => extrema(tau),     
-        :alpha => alpha,
-        :tau => tau,
-        :tauQ => tauQ,
-        :delta => delta)
-end
-
-function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
-"""
-Simulate the lambda and alpha values for the AALA model.
-
-Parameters
-----------
-RCR : Float64
-    The regional content ratio.
-mu : Float64
-    The mean of the log-normal distribution for delta.
-sigma : Float64
-    The standard deviation of the log-normal distribution for delta.
-theta : Float64 
-    The parameter for the CES function.
-tau_data : DataFrame
-    The DataFrame containing the tariff data.
-mu_alpha : Float64
-    The mean of the beta distribution for alpha.
-conc_alpha : Float64
-    The concentration of the beta distribution for alpha.
-conc_err : Float64
-    The concentration of the beta distribution for the error.
-N : Int
-    The number of observations to simulate.
-
-Returns
--------
-results : Dict
-    A dictionary containing the results of the simulation.
-"""
-
-# We draw the three dimensions of heterogeneity :
-# delta : substituability of foreing vers domestic imput
-delta = rand(LogNormal(mu, sigma), N) #always firm specific
-
-# tau, tauQ : tariff from imports
-tauDT = tau_data[sample(1:length(tau_data), N, replace=true)] #always firm specific
-tau = @select(tauDT, "tau") # not sure about this part
-tauQ = @select(tauDT, "tauQ") # not sure about this part 
-
-# alpha : share of local production before measure
-    alpha = ubeta_draws(N, mu_alpha, conc_alpha)
-
-    # Compute costs
-    lambda_R = lambda_RCR(RCR, alpha) # firm specific if alpha is heterogenous
-    lambda_U = lambda_U(delta, theta)
-    C_R = C_comply(lambda_R, delta, theta)
-    C_u = C_U(delta, theta)
-    comply_cost = C_tile(lambda_R, delta, theta).^(1-alpha) #modified version from the authors (l.133)
-
-    # Condition compliance
-    comply_con = (comply_cost .<= tau) .& (lambda_U .<= lambda_R)
-    comply_uncon = lambda_U  .>= lambda_R
-    noncomp = 1-comply_con-comply_uncon
-    compliance = 
-        ifelse.(comply_con .== true, "CC",
-        ifelse.(comply_uncon .== true, "CU",
-        ifelse.(noncomp .== true, "NC")))
-
-    # Dummy for formulation of if/else
-    lambda_true = lambda_R .* comply_con .+ lambda_U .* (1 .- comply_con)
-    chi_true = chi_lambda(lambda_R, delta, theta).*comply_con .+ lambda_U .* (1 .- comply_con)
-    cost_true = comply_con .* C_R.^(1-alpha) .+ comply_uncon.*C_u.^(1-alpha) .+ noncomp.*tau.*(C_u.^(1-alpha)) 
-    # add on error
-    lambda_model = ubeta_draws(N, lambda_true, conc_err)
+    lambda_model = ubeta_draws(calib_param[:N], lambda_true, grid_param[:conc_err])
     chi_model = chi_true
     RCS = alpha .* (1 .- lambda_true) .+ lambda_true # regional content share
 
@@ -533,7 +449,7 @@ function sim_choice( RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc
     return DataFrame(RCR=RCR, choices)
 end
 
-function sim_avg_RCS_alpha_DRF(RCR,theta,mu,sigma,tau_data,alpha,conc.alpha,conc.err,N,omegaR,omegaF,kappa)
+function sim_avg_RCS_alpha_DRF(RCR,theta,mu,sigma,tau_data,alpha,conc_alpha,conc_err,N,omegaR,omegaF,kappa)
     Random.seed!(42)
 
     sim_out = sim_lambda_alpha_DRF(RCR = RCR,theta=theta,mu=mu,sigma=sigma,
@@ -545,7 +461,7 @@ function sim_avg_RCS_alpha_DRF(RCR,theta,mu,sigma,tau_data,alpha,conc.alpha,conc
     return avg_RCS = mean(RCS)
 end
 
-function sim_choice_DRF(RCR,theta,mu,sigma,tau_data,alpha,conc.alpha,conc.err,N,omegaR,omegaF,kappa)
+function sim_choice_DRF(RCR,theta,mu,sigma,tau_data,alpha,conc_alpha,conc_err,N,omegaR,omegaF,kappa)
     Random.seed!(42)
 
     sim_out = sim_lambda_alpha_DRF(RCR = RCR,theta=theta,mu=mu,sigma=sigma,
@@ -570,25 +486,21 @@ end
 
 # Loss functions for  parameters to estimate. theta is now assumed fixed in all of those ====
 # This function is supposed to provide the same output as loss_fun_4par but include more parameters with the idea of improving reproducibility
-function loss_fun_alpha(; params_glob::Dict, param_est::Dict, num_obs::Int64, DR::DataFrame, DS::DataFrame, CAMUS::Vector)
+function loss_fun_alpha(; mu::AbstractVector{Float64}, calib_param::Dict, grid_param::DataFrame, DD::DataFrame)
     """
     Compute the loss function for the calibration of the AALA model.
 
     Parameters
     ----------
-    params_glob : Dict
-        A dictionary containing the global parameters of the model.
-    param_est : Dict
-        A dictionary containing the estimated parameters of the model.
-    num_obs : Int
-        The number of observations in the data.
-    DR : DataFrame
+    mu : AbstractVector{Float64}
+        The mean of the log-normal distribution for delta.
+    calib_param : Dict
+        A dictionary containing the calibration parameters of the model.
+    grid_params : DataFrame
+        A DataFrame containing the grid parameters of the model.
+    DD : DataFrame
         The DataFrame containing the data (real) density.
-    DS : DataFrame
-        The DataFrame containing the simulated data density.
-    CAMUS : Vector
-        A vector containing the countries to consider.
-
+    
     Returns
     -------
     fit : Float64
@@ -597,10 +509,12 @@ function loss_fun_alpha(; params_glob::Dict, param_est::Dict, num_obs::Int64, DR
     
     Random.seed!(42)
 
-    sim_out = sim_lambda_alpha(RCR = params_glob[:RCR], theta = params_glob[:theta], mu_alpha = params_glob[:mu_alpha], tau_data = params_glob[:tau], 
-                               mu = param_est[:mu], sigma = sqrt.(abs.(param_est[:sigma]).^2),
-                               mu_err = param_est[:mu_err], sigma_err = sqrt.(abs.(param_est[:sigma_err]).^2), 
-                               conc_alpha = param_est[:conc_alpha], N=num_obs*20, tau_data = )
+    sim_out = sim_lambda_alpha(mu = mu, calib_param = calib_param, grid_param = grid_param)
+
+    # sim_out = sim_lambda_alpha(RCR = params_glob[:RCR], theta = params_glob[:theta], mu_alpha = params_glob[:mu_alpha], tau_data = params_glob[:tau], 
+    #                            mu = param_est[:mu], sigma = sqrt.(abs.(param_est[:sigma]).^2),
+    #                            mu_err = param_est[:mu_err], sigma_err = sqrt.(abs.(param_est[:sigma_err]).^2), 
+    #                            conc_alpha = param_est[:conc_alpha], N=num_obs*20, tau_data = )
     lambda_sim = 100 .* sim_out[:lambda_model]
     lambda_sim_d = kde(sim_out[:lambda_model])
 
@@ -613,15 +527,17 @@ function loss_fun_alpha(; params_glob::Dict, param_est::Dict, num_obs::Int64, DR
         @combine(:den_sim = mean(:y))
     end 
 
-    # Density of the observed data
-    lambda_data_d = @chain DR begin
-        @subset(!ismissing(:nafta_shr) , :ell in CAMUS)  # Filter rows
-        @select(:nafta_shr)                              # Select relevant column
-        @combine(
-            :kernell_x = kde(nafta_shr).x, 
-            :kernell_y = kde(nafta_shr.density)) # Perform density estimation
-    end
+    # # Density of the observed data
+    # CAMUS = ["US", "CN", "MX"]
+    # lambda_data_d = @chain DR begin
+    #     @subset(!ismissing(:nafta_shr) , :ell in CAMUS)  # Filter rows
+    #     @select(:nafta_shr)                              # Select relevant column
+    #     @combine(
+    #         :kernell_x = kde(nafta_shr).x, 
+    #         :den_data = kde(nafta_shr.density)) # Perform density estimation
+    # end
 
+    # merge data
     DS = join(DD, DS, on = :x_rnd, kind = :inner)
     
     # Compute the distance (loss) between the two densities
@@ -663,3 +579,95 @@ function brut_force_optim(; mu_val, params_glob::Dict, param_est::Dict, param_gr
 end
 
 end # module
+
+# DRF FUNCTION ===============================================================
+
+# function sim_lambda_alpha(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
+# """
+# Simulate the lambda and alpha values for the AALA model.
+
+# Parameters
+# ----------
+# RCR : Float64
+#     The regional content ratio.
+# mu : Float64
+#     The mean of the log-normal distribution for delta.
+# sigma : Float64
+#     The standard deviation of the log-normal distribution for delta.
+# theta : Float64 
+#     The parameter for the CES function.
+# tau_data : DataFrame
+#     The DataFrame containing the tariff data.
+# mu_alpha : Float64
+#     The mean of the beta distribution for alpha.
+# conc_alpha : Float64
+#     The concentration of the beta distribution for alpha.
+# conc_err : Float64
+#     The concentration of the beta distribution for the error.
+# N : Int
+#     The number of observations to simulate.
+
+# Returns
+# -------
+# results : Dict
+#     A dictionary containing the results of the simulation.
+# """
+
+# # We draw the three dimensions of heterogeneity :
+# # delta : substituability of foreing vers domestic imput
+# delta = rand(LogNormal(mu, sigma), N) #always firm specific
+
+# # tau, tauQ : tariff from imports
+# tauDT = tau_data[sample(1:length(tau_data), N, replace=true)] #always firm specific
+# tau = @select(tauDT, "tau") # not sure about this part
+# tauQ = @select(tauDT, "tauQ") # not sure about this part 
+
+# # alpha : share of local production before measure
+#     alpha = ubeta_draws(N, mu_alpha, conc_alpha)
+
+#     # Compute costs
+#     lambda_R = lambda_RCR(RCR, alpha) # firm specific if alpha is heterogenous
+#     lambda_U = lambda_U(delta, theta)
+#     C_R = C_comply(lambda_R, delta, theta)
+#     C_u = C_U(delta, theta)
+#     comply_cost = C_tile(lambda_R, delta, theta).^(1-alpha) #modified version from the authors (l.133)
+
+#     # Condition compliance
+#     comply_con = (comply_cost .<= tau) .& (lambda_U .<= lambda_R)
+#     comply_uncon = lambda_U  .>= lambda_R
+#     noncomp = 1-comply_con-comply_uncon
+#     compliance = 
+#         ifelse.(comply_con .== true, "CC",
+#         ifelse.(comply_uncon .== true, "CU",
+#         ifelse.(noncomp .== true, "NC")))
+
+#     # Dummy for formulation of if/else
+#     lambda_true = lambda_R .* comply_con .+ lambda_U .* (1 .- comply_con)
+#     chi_true = chi_lambda(lambda_R, delta, theta).*comply_con .+ lambda_U .* (1 .- comply_con)
+#     cost_true = comply_con .* C_R.^(1-alpha) .+ comply_uncon.*C_u.^(1-alpha) .+ noncomp.*tau.*(C_u.^(1-alpha)) 
+#     # add on error
+#     lambda_model = ubeta_draws(N, lambda_true, conc_err)
+#     chi_model = chi_true
+#     RCS = alpha .* (1 .- lambda_true) .+ lambda_true # regional content share
+
+#     # Store the results in a dictionary and return it
+#     return results = Dict(
+#         :lambda_U => lambda_U,
+#         :lambda_R => lambda_R,
+#         :lambda_model => lambda_model,
+#         :chi_model => chi_model,
+#         :RCS => RCS,
+#         :cost_true => cost_true,
+#         :comply_cost => comply_cost,
+#         :compliance => compliance,
+#         :CC_frac => mean(comply_con),
+#         :CU_frac => mean(comply_uncon),
+#         :alpha_mean => mean(alpha),
+#         :alpha_rng => extrema(alpha), 
+#         :delta_rng => extrema(delta), 
+#         :tau_rng => extrema(tau),     
+#         :alpha => alpha,
+#         :tau => tau,
+#         :tauQ => tauQ,
+#         :delta => delta)
+# end

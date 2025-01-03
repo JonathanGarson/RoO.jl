@@ -30,19 +30,6 @@ tau = DC[!, :tauD]
 tauQ = 1
 conc_err = 1e10
 
-# We store in a dictionnary the different parameters of calibration 
-calib_params = Dict(
-    :RCR => RCR_pct,
-    :theta => theta_base,
-    :mu => mu,
-    :sigma => sigma,
-    :tau => tau,
-    :tauQ => tauQ,
-    :alpha => alpha_base,
-    :conc_err => conc_err
-    :num_obs => num_obs
-    )
-
 # Compute the data density ================================================
 # Choose the conservative or liberal going forward, and compute data density, also load tau index
 if Mex_con_lib == "con" 
@@ -68,6 +55,19 @@ DD = @chain DD begin
     @groupby(:x_round)
     @combine(:den_data = mean(:kernell_y))
 end
+
+# We store in a dictionnary the different parameters of calibration 
+calib_param = Dict(
+    :RCR => RCR_pct,
+    :theta => theta_base,
+    :mu => mu,
+    :sigma => sigma,
+    :tau => tau,
+    :tauQ => tauQ,
+    :mu_alpha => alpha_base,
+    :conc_err => conc_err
+    :num_obs => num_obs
+    )
 
 #  We create the grid for the calibration =================================
 mu_grid = collect(-0.1:0.01:0.25)

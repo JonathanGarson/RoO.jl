@@ -333,7 +333,6 @@ loss_fun_4par <- function(mu_est,sigma_est,cona_est,cone_est) {
   return(fit)
 }
 
-
 #
 # Brute force functions ====
 #
