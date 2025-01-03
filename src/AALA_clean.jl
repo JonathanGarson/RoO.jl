@@ -4,17 +4,24 @@ using DataFramesMeta
 using StatsBase
 using Statistics
 using IterTools
+using Serialization
 
-#problème de réplication des lignes 100-107 qui epêche d'avoir de bon résulats à partir de la ligne 142. 
-# Charger les données depuis le fichier CSV
+
 file_path = "Data/AALA/data_aala_raw.csv"
 
+#Load raw data
 DR_raw=CSV.read(file_path, DataFrame)
 DR = CSV.read(file_path, DataFrame)
-frequencies = DataFrame(year=[2011, 2011, 2012, 2013, 2013, 2013, 2014, 2015, 2015])
 
+# Checking that we have the same number of observation by year than the original paper
+# Frequency_table = countmap(DR.year)
+# 2011 => 379,  2012 => 347, 2013 => 386, 2014 => 370, 2015 => 432, 2016 => 385, 2017 => 572, 2018 => 630, 2019 => 549, 2020 => 617
+# We note that we have slightly less observations for 2017 (572 VS 576), 2018 (630 VS 640), 2019 (549  VS 586)  and 2020 (617 VS 618).
+# This could be due to later modifications to raw data       
 
-#-> start out by fixing some shifted columns in 2011 and 2017
+# First step : cleanning problems in raw data.
+
+#1. Fix some shifted columns in 2011 and 2017
 DR.flag = (DR.source_T1 .== "") .& (DR.source_T2 .!= "")# Create a "flag" column to identify rows that need fixing
 flagged_indices = findall(DR.flag)  # Indices where flag is true
 for i in flagged_indices
@@ -29,16 +36,14 @@ end
 
 for i in flagged_indices #Apply specific fixes based on `carlines` 
     if DR.carlines[i] == "Renegade"
-        DR.final_assembly1[i] = "IT"  # Correct to Melfi factory
-    elseif DR.carlines[i] == "ATS"
+        DR.final_assembly1[i] = "IT"  # Correct the Melfi factory that was listed as US while its IT
+    elseif DR.carlines[i] == "ATS" #last 4 vars all shifted
         DR.source_T2[i] = DR.source_T1[i]
         DR.source_T1[i] = DR.source_E2[i]
         DR.source_E2[i] = DR.final_assembly2[i]
         DR.final_assembly2[i] = ""
     end
 end
-
-
 
 select!(DR, Not(:flag))  # Remove the flag column in place
 
@@ -61,13 +66,13 @@ select!(DR, Not(:flag))
 
 #same page, special case
 DR[!, :flag] .= (DR.year .== 2011) .& (DR.carlines .== "Routan")
-
 DR[DR.flag .== true, :source_E1] .= DR[DR.flag .== true, :final_assembly2]
 DR[DR.flag .== true, :final_assembly2] .= ""
 DR[DR.flag .== true, :source_E2] .= DR[DR.flag .== true, :source_E1]
 DR[DR.flag .== true, :source_T1] .= DR[DR.flag .== true, :source_E2]
 
 select!(DR, Not(:flag))
+
 #4 Verano, Regal and CTS all appear to be shifted in 2017
 DR[!, :flag] .= (DR.source_E1 .== "") .& (DR.final_assembly2 .!= "") .& (DR.year .== 2017)
 DR[DR.flag .== true, :source_E1] .= DR[DR.flag .== true, :final_assembly2]
@@ -83,57 +88,60 @@ DR[!, :flag] .= (coalesce.(DR.final_assembly1, "") .== coalesce.(DR.final_assemb
 DR[DR.flag .== true, :final_assembly2] .= ""
 select!(DR, Not(:flag))
 
-#
+# Step 2 : create new variables 
+
+# create variable mfg_HQ
 @transform!(DR, :mfg_HQ = "ROW") # Default manufacturing headquarters (HQ) to "ROW"
 
-@rtransform!(DR, 
-    :mfg_HQ = if occursin(r"^General", :mfg) || :mfg == "GM LLC" || occursin(r"^Ford", :mfg) || occursin(r"^Tesla", :mfg)
-        "USA"
-    else
-        :mfg_HQ
-    end
-) # Set HQ to "USA" based on manufacturer
+    # Set HQ to "USA" based on manufacturer
+    @rtransform!(DR, 
+        :mfg_HQ = if occursin(r"^General", :mfg) || :mfg == "GM LLC" || occursin(r"^Ford", :mfg) || occursin(r"^Tesla", :mfg)
+            "USA"
+        else
+            :mfg_HQ
+        end
+    ) 
 
-# Set HQ to "KOR" for Korean manufacturers
-@rtransform!(DR, 
-    :mfg_HQ = if occursin(r"^Hyundai", :mfg) || occursin(r"^Kia", :mfg)
-        "KOR"
-    else
-        :mfg_HQ
-    end
-)
+    # Set HQ to "KOR" for Korean manufacturers
+    @rtransform!(DR, 
+        :mfg_HQ = if occursin(r"^Hyundai", :mfg) || occursin(r"^Kia", :mfg)
+            "KOR"
+        else
+            :mfg_HQ
+        end
+    )
 
-# Set HQ to "JPN" for Japanese manufacturers
-@rtransform!(DR, 
-    :mfg_HQ = if occursin(r"^Toyota", :mfg) || occursin(r"^Mazda", :mfg) || occursin(r"Honda", :mfg) || occursin(r"^Nissan", :mfg) ||
-                    occursin(r"Suzuki", :mfg) || occursin(r"^Fuji", :mfg) || occursin(r"^Subaru", :mfg) || occursin(r"^Mitsub", :mfg)
-        "JPN"
-    else
-        :mfg_HQ
-    end
-)
+    # Set HQ to "JPN" for Japanese manufacturers
+    @rtransform!(DR, 
+        :mfg_HQ = if occursin(r"^Toyota", :mfg) || occursin(r"^Mazda", :mfg) || occursin(r"Honda", :mfg) || occursin(r"^Nissan", :mfg) ||
+                        occursin(r"Suzuki", :mfg) || occursin(r"^Fuji", :mfg) || occursin(r"^Subaru", :mfg) || occursin(r"^Mitsub", :mfg)
+            "JPN"
+        else
+            :mfg_HQ
+        end
+    )
 
 
-# Correct a typo in manufacturer name
-@rtransform!(DR, 
-    :mfg = if :mfg == "PoyrscheAG"
-        "Porsche AG"
-    else
-        :mfg
-    end
-)
+    # Correct a typo in manufacturer name
+    @rtransform!(DR, 
+        :mfg = if :mfg == "PoyrscheAG"
+            "Porsche AG"
+        else
+            :mfg
+        end
+    )
 
-# Set HQ to "DEU" for German manufacturers
-@rtransform!(DR, 
-    :mfg_HQ = if occursin(r"^Volks", :mfg) || occursin(r"^Merc", :mfg) || occursin(r"^Porsche", :mfg) || 
-                  occursin(r"^BMW", :mfg) || occursin(r"^Audi", :mfg)
-        "DEU"
-    else
-        :mfg_HQ
-    end
-)
+    # Set HQ to "DEU" for German manufacturers
+    @rtransform!(DR, 
+        :mfg_HQ = if occursin(r"^Volks", :mfg) || occursin(r"^Merc", :mfg) || occursin(r"^Porsche", :mfg) || 
+                    occursin(r"^BMW", :mfg) || occursin(r"^Audi", :mfg)
+            "DEU"
+        else
+            :mfg_HQ
+        end
+    )
 
-# Determine source of engines
+# Create variables to determine the source of engines
 @rtransform!(DR, 
     :E_US = occursin(r"US", :source_E1) || occursin(r"US", :source_E2)
 )
@@ -145,7 +153,7 @@ select!(DR, Not(:flag))
              (occursin(r"^C", :source_E2) && !occursin(r"CH", :source_E2)))
 )
 
-#Determining transmission sources
+# Create variables to determine the source of the transmission.
 @rtransform!(DR, :T_US = occursin(r"US", :source_T1) || occursin(r"US", :source_T2))
 @rtransform!(DR, 
     :T_CA = occursin(r"CN", :source_T1) || occursin(r"CN", :source_T2) || 
@@ -160,8 +168,8 @@ select!(DR, Not(:flag))
 
 @rtransform!(DR, :T_MX = occursin(r"MX", :source_T1) || occursin(r"MX", :source_T2) || 
                         occursin(r"^M", :source_T1) || occursin(r"^M", :source_T2))                       
-#content shares
 
+# Create new varaible containing the content shares produced in US CA
 @rtransform!(DR, 
     :us_ca_shr = if !ismissing(:percent_content_USA_CAN) && !isempty(:percent_content_USA_CAN)
         # Supprimer le symbole `%`, diviser par les sauts de ligne, et prendre le premier chiffre
@@ -171,9 +179,14 @@ select!(DR, Not(:flag))
     end
 )
 
-missing_values = DR[ismissing.(DR.us_ca_shr), :percent_content_USA_CAN]
- # there are 52 blanks
- println(countmap(DR.final_assembly1))
+# missing_values = DR[ismissing.(DR.us_ca_shr), :percent_content_USA_CAN]
+# As in the original article, there are 52 blanks
+
+# we count the frequencies of the values taken by final_assembly 1.
+# println(countmap(DR.final_assembly1))
+# We obtain the same results as the original paper
+
+# Create new varaible containing the content shares of produced by countries other than US CA
  DR.other1_shr = map(x -> 
  if ismissing(x) || isempty(x)
      missing
@@ -184,6 +197,7 @@ missing_values = DR[ismissing.(DR.us_ca_shr), :percent_content_USA_CAN]
  DR.percent_content_other1
 )
 
+# Create new varaible containing the country code of the country that produced the content 
 DR.other1_who = map(x -> 
     if ismissing(x) || isempty(x)
         missing
@@ -194,7 +208,6 @@ DR.other1_who = map(x ->
     DR.percent_content_other1
 )
 
-#je capte pas à quoi servent les ligne 69 et 70 du code original other1_shr n'a déjà pas de % dans notre dataframe
 
 # Filter rows where `other1_who` starts with "M"
 starts_with_M = filter(row -> 
@@ -202,23 +215,26 @@ starts_with_M = filter(row ->
     eachrow(DR)
 )
 
-println("Occurrences starting with M:")
-println(countmap([row[:other1_who] for row in starts_with_M]))
+# check that we have the same number of observations as in the original paper.
+# println(countmap([row[:other1_who] for row in starts_with_M]))
+# we have 2 more obs for M
 
 # Filter rows where `other1_who` contains "M"
-contains_M = filter(row -> 
-    !ismissing(row[:other1_who]) && occursin(r"M", row[:other1_who]), 
-    eachrow(DR)
-)
+contains_M = filter(row -> !ismissing(row[:other1_who]) && occursin("M", row[:other1_who]), DR)
+frequency_table_2 = countmap(contains_M.other1_who)
 
+#check that we have the same as original paper
+#println(frequency_table_2)
+# Dict{Union{Missing, String}, Int64}(" Mexico" => 15, "M" => 218, "Mexico" => 2, " MX" => 61, " M " => 6, " M" => 357)
 
-#
-non_empty_count = sum(.!ismissing.(DR.percent_content_other2) .& .!(DR.percent_content_other2 .== ""))#1335 obs
-println("Non-empty values in percent_content_other2: $non_empty_count")
+# Count non-empty, non-missing entries in the column `percent_content_other2`
+non_empty_count = sum(.!ismissing.(DR.percent_content_other2) .& .!(DR.percent_content_other2 .== ""))#1335 obs as in the original code
 
+# Filter rows where `percent_content_other2` contains "M", handling missing values, and count occurrences
 rows_with_M = filter(row -> !ismissing(row[:percent_content_other2]) && occursin("M", row[:percent_content_other2]), eachrow(DR))
 println("Table of percent_content_other2 with 'M':")
 println(countmap([row[:percent_content_other2] for row in rows_with_M]))  # Indeed these all look like Mexico
+
 
 #Extract Numeric Prefix from percent_content_other2 into other2_shr:
 DR.other2_shr = map(x -> 
@@ -230,10 +246,17 @@ DR.other2_shr = map(x ->
     end, DR.percent_content_other2
 )
 
-#je pense qu'il y a une erreure dans leur code à la ligne 75-76 car leur code produit uniquement des NA pour other2_shr ce qui n'est pas consistent avec la colonne percent_content_other2
+# Line 76 there is an issue with the original code.
+#Running DR[,other2_shr := as.numeric(st_left(percent_content_other2,"%"))]produces only NA
+# using DR[, numeric_part := fifelse(!is.na(percent_content_other2) & grepl("^[0-9]+", percent_content_other2),
+#                              sub("^([0-9]+).*", "\\1", percent_content_other2),
+#                              NA_character_)]
+#DR[,other2_who := st_right(percent_content_other2,"%")]
+#allows to accuratly capture the percentage value in other2_shr.
 
-println("Summary of other2_shr:")
-println(describe(DR.other2_shr))
+#Additional checks
+#println("Summary of other2_shr:")
+#println(describe(DR.other2_shr))
 
 #Extract Characters After % into other2_who
 DR.other2_who = map(x -> 
@@ -244,18 +267,25 @@ DR.other2_who = map(x ->
     end, DR.percent_content_other2
 )
 
+# There is a similar issue line 80 above in the original code
+#the command DR[,other2_who := st_right(percent_content_other2,"%")]creates a collumn of NA
+# using DR[, letters_part := fifelse(
+#  !is.na(percent_content_other2) & grepl("%", percent_content_other2), # Vérifier si `%` est présent
+#  sapply(strsplit(percent_content_other2, "%"), function(x) ifelse(length(x) > 1, gsub("[^A-Za-z]", "", x[2]), NA_character_)),
+#  NA_character_
+#)]
+#Allows to build other2_who accurately
+
+
+
 #Filter Rows Where other2_who Contains "M" and Tabulate:
 rows_with_M_in_other2_who = filter(row -> !ismissing(row[:other2_who]) && occursin("M", row[:other2_who]), eachrow(DR))
 println("Table of other2_who with 'M':")
 println(countmap([row[:other2_who] for row in rows_with_M_in_other2_who]))
 
 #Filter Rows Where other2_who Contains "M" and other2_shr Is missing:
-rows_with_M_and_missing_other2_shr = filter(row -> 
-    !ismissing(row[:other2_who]) && occursin("M", row[:other2_who]) && ismissing(row[:other2_shr]), 
-    eachrow(DR)
-)
-println("Rows where other2_who contains 'M' and other2_shr is missing:")
-println(DataFrame(rows_with_M_and_missing_other2_shr))
+#rows_with_M_and_missing_other2_shr = filter(row -> !ismissing(row[:other2_who]) && occursin("M", row[:other2_who]) && ismissing(row[:other2_shr]), DR)
+#println(rows_with_M_and_missing_other2_shr =)
 
 #one fix for Hyundai Accent and Hyundai Accent (Manual Transmission) in 2018 where columns are messed up
 # Update rows where carlines == "Accent" and year == 2018
@@ -291,9 +321,6 @@ MX2 = unique(
         eachrow(DR)
     ) |> x -> [row[:final_assembly2] for row in x]
 )
-
-println("MX2: $MX2")
-
 CA2 = unique(
     filter(row -> 
         !ismissing(row[:final_assembly2]) && 
@@ -335,10 +362,9 @@ USCAMX2 = union(union(US2, CA2), MX2)
     # Summarize filtered results
     summary1 = summarize(filtered1_us_ca_shr)
     summary2 = summarize(filtered2_us_ca_shr)
-    println("Summary for final_assembly1 in USCAMX:")
     println(summary1)
-    println("Summary for final_assembly2 in USCAMX2:")
     println(summary2)
+#we obtain the same result as original code (modified for spotted issues)
 
 # Count rows where both `other1_who` and `other2_who` contain "M"
 # mex is never listed under BOTH others.
@@ -357,8 +383,13 @@ USCAMX2 = union(union(US2, CA2), MX2)
             DR[i, :mx_shr] = DR[i, :other1_shr]
         end
     end
+    for i in 1:nrow(DR)
+        if !ismissing(DR[i, :other1_who]) && occursin(" M", DR[i, :other1_who])
+            DR[i, :mx_shr] = DR[i, :other1_shr]
+        end
+    end
 
-# Summarize `mx_shr` for rows where `final_assembly1` belongs to the `USCAMX` set
+    # Summarize `mx_shr` for rows where `final_assembly1` belongs to the `USCAMX` set
     filtered_rows = filter(row -> row[:final_assembly1] in USCAMX, eachrow(DR)) #Filter rows where `final_assembly1` is in `USCAMX`
     mx_shr_values = [row[:mx_shr] for row in filtered_rows]#Extract `mx_shr` values for the filtered rows
     summary_stats = Dict(
@@ -427,7 +458,7 @@ DR.ell = [
     final_assembly1 in MX ? "MX" :
     "ROW"
     for final_assembly1 in DR.final_assembly1
-] # Create the `DR` DataFrame
+] # Create ell
 
 
 # Count rows based on `ell` membership in specific sets and the presence or absence of `us_ca_shr`
@@ -486,19 +517,19 @@ D2 = filter(row -> row[:add_plant], D2) # Filter rows where `add_plant` is true
 select!(D2, Not(:ell)) # Remove the `ell` column
 rename!(D2, :ell2 => :ell) # Rename `ell2` to `ell`
 
-#append the additional sites, fill in add_plant as false for the final_assembly1 sites: 4788 obs now : 4666+122
-DR_combined = vcat(DR, D2; cols=:union) #Append the DataFrames, ensuring all columns are included
-DR_combined.add_plant .= coalesce.(DR_combined.add_plant, false) # Replace missing values in `add_plant` with `false`
+# Identify and dropcolumns whose names start with "ell2"
+cols_to_delete = filter(name -> occursin(r"^ell2", name), names(DR))
+select!(DR, Not(Symbol.(cols_to_delete)))
 
-#get rid of the location 2 logicals
-cols_to_delete = filter(col -> occursin(r"^ell2", col), names(DR)) # Identify columns to delete using a regex pattern
-select!(DR, Not(cols_to_delete)) # Remove the identified columns
+#append the additional sites, fill in add_plant as false for the final_assembly1 sites: 4788 obs now : 4666+122
+DR= vcat(DR, D2; cols=:union) #Append the DataFrames, ensuring all columns are included
+DR.add_plant .= coalesce.(DR.add_plant, false) # Replace missing values in `add_plant` with `false`
 #
 # Now starts the (complex) bounding of Mexican share (which is not a variable per se)
 #
 # there are two is.na(ell), that have multiple assembly countries in north america
 result = combine(
-    groupby(DR, :ell),
+    DataFrames.groupby(DR, :ell),
     :mx_shr => (x -> mean(skipmissing(x))) => :meanmx,
     :us_ca_shr => (x -> mean(skipmissing(x))) => :meanusca
 )
@@ -540,59 +571,43 @@ for i in 1:nrow(DR)
     end
 end
 
-# Step 1: Compute `mx_shr_rem` as `mx_shr / rem_shr` for rows where `nafta_assembly` is true
+
 # Calculate the ratio of `mx_shr` to `rem_shr` for NAFTA assembly rows
 # Initialize the `mx_shr_rem` column with `missing`
 DR[!, :mx_shr_rem] = Vector{Union{Missing, Float64}}(missing, nrow(DR))
 
 # Loop through each row to calculate `mx_shr_rem`
 for i in 1:nrow(DR)
-    if DR[i, :nafta_assembly] && !ismissing(DR[i, :mx_shr]) && !ismissing(DR[i, :rem_shr])
+    if DR[i, :nafta_assembly] && !ismissing(DR[i, :mx_shr]) && !ismissing(DR[i, :rem_shr]) 
         DR[i, :mx_shr_rem] = DR[i, :mx_shr] / DR[i, :rem_shr]
     end
 end
 
 # Summarize `mx_shr_rem` for NAFTA assembly rows
 # Generate summary statistics for `mx_shr_rem` for NAFTA assembly rows
-# Filter rows where `nafta_assembly` is true
-filtered_rows = filter(row -> row[:nafta_assembly], eachrow(DR))
-
 # Create a DataFrame from the filtered rows
-filtered_df = DataFrame(filtered_rows)
-
-# Calculate summary statistics explicitly
-mean_value = mean(skipmissing(filtered_df.mx_shr_rem))
-min_value = minimum(skipmissing(filtered_df.mx_shr_rem))
-max_value = maximum(skipmissing(filtered_df.mx_shr_rem))
-missing_count = count(ismissing, filtered_df.mx_shr_rem)
-nonmissing_count = count(!ismissing, filtered_df.mx_shr_rem)
-
-# Print summary statistics
-println("Summary statistics for `mx_shr_rem` where `nafta_assembly` is true:")
-println("Mean: $mean_value")
-println("Min: $min_value")
-println("Max: $max_value")
-println("Missing Count: $missing_count")
-println("Non-missing Count: $nonmissing_count")
-
-#here it diverge a bit
+#filtered_nafta = DataFrame(nafta_assembly_true)
+#filtered_nafta_without_NAN = dropmissing(filtered_nafta)
+#summary_stats_4 = describe(filtered_nafta_without_NAN.mx_shr_rem)
 
 # Calculate the mean of `mx_shr_rem` for each `ell` group where `nafta_assembly` is true and `mx_shr_rem < 1`
+# Filter rows where `nafta_assembly` is true and `mx_shr_rem < 1`
+
 filtered_DR = filter(row -> 
-    row[:nafta_assembly] && !ismissing(row[:mx_shr_rem]) && row[:mx_shr_rem] < 1, 
-    eachrow(DR)
-) # Filter rows where `nafta_assembly` is true and `mx_shr_rem < 1`
+    !ismissing(row[:nafta_assembly]) && row[:nafta_assembly] && 
+    !ismissing(row[:mx_shr_rem]) && row[:mx_shr_rem] < 1, DR)
+
+# Group by `ell` and compute the mean of `mx_shr_rem`, skipping missing values
 con_means = combine(
-    groupby(DataFrame(filtered_DR), :ell), 
+    DataFrames.groupby(filtered_DR, :ell),
     :mx_shr_rem => (x -> mean(skipmissing(x))) => :mx_shr_rem_mn
-)# Group by `ell` and calculate the mean of `mx_shr_rem`
-println("Conditional means by group:")
-println(con_means)
+)
+
 
 
 # Calculate the median of `mx_shr_rem` for each `ell` group where `nafta_assembly` is true
-filtered_DR = filter(row -> row[:nafta_assembly], eachrow(DR)) # Filter rows where `nafta_assembly` is true
-filtered_df = DataFrame(filtered_DR) # Create a DataFrame from the filtered rows
+filtered_nafta = filter(row -> row[:nafta_assembly] == true, DR)
+filtered_df = DataFrame(filtered_nafta) # Create a DataFrame from the filtered rows
 unique_ell = unique(filtered_df.ell) # Get unique values of `ell` to group by
 medians = DataFrame(
     ell=unique_ell,
@@ -607,80 +622,164 @@ println(medians)
 filtered_DR = filter(row -> row[:ell] == "MX", eachrow(DR))# Filter rows where `ell == "MX"`
 mx_md_mx = median(skipmissing(filtered_DR.mx_shr))# Calculate the median of `mx_shr`, ignoring missing values
 println("Median of `mx_shr` for `ell == \"MX\"`: $mx_md_mx")
-#On a 42,5 alors qu'eux on 45
+#We obtain 41 as in the original code.
+
+# fonction to replicate stat_merge from package headR
 
 
-con_means = DataFrame(
-    ell=["US", "CA", "MX"],
-    mx_shr_rem_mn=[0.8, 0.6, 0.7]
-)
+function merge_stata(DTx::DataFrame, DTy::DataFrame, by)
+    # Create copies to avoid modifying the original dataframes
+    x = deepcopy(DTx)
+    y = deepcopy(DTy)
+    
+    # Add indicator columns
+    x[!, :stata_master] .= 1
+    y[!, :stata_using] .= 2
+    
+    # Perform a full outer join
+    DT = outerjoin(x, y, on = by, makeunique=true)
+    
+    # Define a custom function to handle missing values
+    function sum_with_na(x, y)
+        if isnothing(x)
+            return y
+        elseif isnothing(y)
+            return x
+        else
+            return x + y
+        end
+    end
+    
+    # Compute the stata_merge column
+    DT[:, :stata_merge] = map(sum_with_na, DT[:, :stata_master], DT[:, :stata_using])
+    
+    # Remove temporary indicator columns
+    select!(DT, Not([:stata_master, :stata_using]))
+    
+    # Count rows by stata_merge categories
+    counts = combine(DataFrames.groupby(DT, :stata_merge), nrow => :count)
+    println(counts)
+    
+    # Return the merged DataFrame
+    return DT
+end
 
-# Perform a left join to merge `DR` with `con_means` on `ell` and remove the auxiliary column `stata_merge` if it exists
-DR = leftjoin(DR, con_means, on=:ell) # Merge the DataFrames on `ell`
-if :stata_merge in names(DR)
-    select!(DR, Not(:stata_merge))  # Drops the `stata_merge` column
-end # Remove the auxiliary column (if present)
+# Merge the DataFrames on `ell`
+DR =merge_stata(DR,con_means, :ell)
 
 # fix mexico shares, with conservative (con) and liberal (lib) assumptions
 
-
 # Create conservative (`mx_shr_con`) and liberal (`mx_shr_lib`) versions of `mx_shr`, replacing missing values with 0 in the conservative version
-DR[!, :mx_shr_con] = DR[!, :mx_shr]# Create a new column `mx_shr_con` as a copy of `mx_shr`
+DR[!, :mx_shr_con] = copy(DR[!, :mx_shr])# Create a new column `mx_shr_con` as a copy of `mx_shr`
 for i in 1:nrow(DR)
     if ismissing(DR[i, :mx_shr_con])
         DR[i, :mx_shr_con] = 0.0
     end
 end # Replace `missing` values in `mx_shr_con` with 0 (conservative guess)
-
-DR[!, :mx_shr_lib] = DR[!, :mx_shr_con] # Create a new column `mx_shr_lib` as a copy of `mx_shr_con`
-
-#revoir à partir d'ici
+DR[!, :mx_shr_lib] = Float64.(coalesce.(DR[!, :mx_shr_con], missing))
 # liberal assumption for mexican assembly
+# Update :mx_shr_lib in the loop
 for i in 1:nrow(DR)
-    if DR[i, :nafta_assembly] && ismissing(DR[i, :mx_shr]) && ismissing(DR[i, :other1_shr])
-        DR[i, :mx_shr_lib] = (100.0 - DR[i, :us_ca_shr]) * DR[i, :mx_shr_rem_mn]
+    if DR[i, :nafta_assembly] && ismissing(DR[i, :mx_shr]) && ismissing(DR[i, :other1_shr]) 
+        DR[i, :mx_shr_lib] = (100 - DR[i, :us_ca_shr]) * DR[i, :mx_shr_rem_mn]
     end
-end # Update `mx_shr_lib` where `nafta_assembly` is true, `mx_shr` is missing, and `other1_shr` is also missing
+end
+
+# Update `mx_shr_lib` where `nafta_assembly` is true, `mx_shr` is missing, and `other1_shr` is also missing
 for i in 1:nrow(DR)
     if DR[i, :nafta_assembly] && ismissing(DR[i, :mx_shr]) && !ismissing(DR[i, :other1_shr])
-        DR[i, :mx_shr_lib] = (100.0 - DR[i, :us_ca_shr] - DR[i, :other1_shr]) * DR[i, :mx_shr_rem_mn]
+        DR[i, :mx_shr_lib] = DR[i, :mx_shr_lib] = (100 - DR[i, :us_ca_shr] - DR[i, :other1_shr]) * DR[i, :mx_shr_rem_mn]
     end
 end #Update `mx_shr_lib` where `nafta_assembly` is true, `mx_shr` is missing, and `other1_shr` is not missing
 
 for i in 1:nrow(DR)
-    if DR[i, :nafta_assembly] && ismissing(DR[i, :mx_shr]) && !ismissing(DR[i, :mx_shr_lib]) && DR[i, :mx_shr_lib] >= 15
-        DR[i, :mx_shr_lib] = 14.0
+    if DR[i, :nafta_assembly] && ismissing(DR[i, :mx_shr]) && DR[i, :mx_shr_lib] >= 15
+        DR[i, :mx_shr_lib] = 14
     end
 end# Cap `mx_shr_lib` at 14 where `nafta_assembly` is true, `mx_shr` is missing, and `mx_shr_lib >= 15`
 
 # Create Cartesian product of `ell` and assumptions
 # Define the vectors
-
-# Define the vectors
 ell = ["US", "CA", "MX"]
 assump = ["con", "lib"]
 
-# Generate the Cartesian product
-cartesian_product = collect(product(ell, assump))
-
-# Convert the Cartesian product to a DataFrame
-it = DataFrame([(p[1], p[2]) for p in cartesian_product], [:ell, :assump])
-
+# Calculer le produit cartésien et convertir en DataFrame
+it = DataFrame(
+    ell = ["CA", "CA", "MX", "MX", "US", "US"],
+    assump = ["con", "lib", "con", "lib", "con", "lib"]
+)
 # Display the resulting DataFrame
 println(it)
 
-# Function to summarize the `mx_shr_*` columns
-function summarize_shares(DR::DataFrame, ell_value::String, assumption::String)
-    filtered_rows = filter(row -> row[:ell] == ell_value, eachrow(DR))
-    column_name = Symbol("mx_shr_" * assumption)
-    if column_name in names(DR)
-        stats = describe(skipmissing(filtered_rows[!, column_name]))
-        println("Summary for ell=$ell_value, assumption=$assumption:")
-        println(stats)
-    else
-        println("Column $(column_name) not found in DataFrame.")
+# Function to summarize data
+
+function sumit(DR::DataFrame, x::String, y::String)
+    # Dynamically construct the column name
+    column_name = ("mx_shr_" * y)
+     # Check if the column exists in the original DataFrame
+     if !(column_name in names(DR))
+        error("The column $column_name does not exist in the DataFrame.")
     end
+
+    #Filter rows where ell == x
+    filtered_data_sumit = filter(row -> row.ell == x, DR)
+
+    # Calculate summary statistics for the filtered column
+    summary_stats = describe(filtered_data_sumit[!, column_name])
+
+    return summary_stats
+    
 end
 
+DR[!, :nafta_shr_lib] = DR[!, :us_ca_shr] .+ coalesce.(DR[!, :mx_shr_lib], 0.0)
+DR[!, :nafta_shr_con] = DR[!, :us_ca_shr] .+ coalesce.(DR[!, :mx_shr_con], 0.0)
 
-#je me suis arrétée à la ligne 169, il en reste que 13 mais je suis trop crevée j'arrive plus trop à avancer.
+function sumit_2(DR::DataFrame, x::String, y::String)
+    # Dynamically construct the column name
+    column_name = ("nafta_shr_" * y)
+     # Check if the column exists in the original DataFrame
+     if !(column_name in names(DR))
+        error("The column $column_name does not exist in the DataFrame.")
+    end
+
+    #Filter rows where ell == x
+    filtered_data_sumit = filter(row -> row.ell == x, DR)
+
+    # Calculate summary statistics for the filtered column
+    summary_stats = describe(filtered_data_sumit[!, column_name])
+
+    return summary_stats
+    
+end
+
+# Call the function
+#result = sumit(DR, "CA", "con")
+#println(result)
+#same result as original code
+result = sumit_2(DR, "CA", "con")
+println(result)
+
+#  Redirect output to a file
+open("nafta_shr_lib_con_rev.txt", "w") do file
+    redirect_stdout(file)
+    
+    println("Mexico shares by assembly location, conservative and then liberal")
+    
+    # Apply cfunction for all combinations in it
+    for i in 1:nrow(it)
+        ell_value = it[i, :ell]
+        assump_value = it[i, :assump]
+        println("Summary for ell = $ell_value and assumption = $assump_value:")
+        println(sumit(DR, ell_value, assump_value))
+    end
+
+    println("Nafta shares by assembly location")
+    for i in 1:nrow(it)
+        ell_value = it[i, :ell]
+        assump_value = it[i, :assump]
+        println("Summary for ell = $ell_value and assumption = $assump_value:")
+        println(sumit_2(DR, ell_value, assump_value))
+    end 
+    # End redirection automatically at the end of the block
+end
+serialize("Data/RDS_JIE_rev/AALA_rev.jls", DR)
