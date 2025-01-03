@@ -10,7 +10,6 @@ using Serialization
 file_path = "Data/AALA/data_aala_raw.csv"
 
 #Load raw data
-DR_raw=CSV.read(file_path, DataFrame)
 DR = CSV.read(file_path, DataFrame)
 
 # Checking that we have the same number of observation by year than the original paper
@@ -24,10 +23,6 @@ DR = CSV.read(file_path, DataFrame)
 #1. Fix some shifted columns in 2011 and 2017
 DR.flag = (DR.source_T1 .== "") .& (DR.source_T2 .!= "")# Create a "flag" column to identify rows that need fixing
 flagged_indices = findall(DR.flag)  # Indices where flag is true
-for i in flagged_indices
-    DR.source_T1[i] = DR.source_T2[i]
-    DR.source_T2[i] = ""
-end
 
 for i in flagged_indices # Move data from source_T2 to source_T1 and clear source_T2
     DR.source_T1[i] = DR.source_T2[i]
