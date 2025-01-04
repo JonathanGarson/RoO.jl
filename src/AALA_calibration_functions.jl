@@ -170,7 +170,7 @@ end
 # 1. Calibration of the model to lambda
 # 2. Welfare calculations using chi 
 
-Lambda simulations simplest version =========================================
+#Lambda simulations simplest version =========================================
 
 function sim_lambda(RCR, mu, sigma, theta, tau_data, alpha_lo, alpha_hi, alpha_a, alpha_b, N)
     #  Draw the three dimensions of heterogeneity : 
