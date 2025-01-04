@@ -1,3 +1,5 @@
+# Load the necessary functions from a separate Julia file
+include("AALA_calibration_functions.jl")
 using CSV
 using DataFrames
 using Statistics
@@ -5,9 +7,8 @@ using KernelDensity
 using Distributions
 using Plots
 using LaTeXStrings
-using PlotShapes
-
-
+using .AALA_calibration_functions
+using Random
 
 function check_or_create_directory(relative_path::String)
     # Get the absolute path based on the relative path
@@ -26,10 +27,6 @@ end
 
 relative_path = "data/RDS_JIE_rev/Params4"
 check_or_create_directory(relative_path)
-
-
-# Load the necessary functions from a separate Julia file
-include("AALA_calibration_functions.jl")
 
 # Define calibration years
 calib_years = 2011:2019
@@ -95,7 +92,6 @@ lambda_data_d = kde(nafta_shr_values)
 # do it for alpha = 0, so that we have a minimal version 
 #
 # simulation
-using Random
 
 # Set the seed for reproducibility
 Random.seed!(140422)
@@ -112,7 +108,6 @@ params = Dict(
     :alpha_a => 1e7,
     :alpha_b => 1e7
 )
-
 
 params[:mu]
 # Call the simulation function
