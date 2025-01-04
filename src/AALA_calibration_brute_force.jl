@@ -1,6 +1,5 @@
 # This code replicate the simulation results from the paper. 
 
-using Base.Threads
 using Chain
 using DataFrames
 using DataFramesMeta
@@ -8,6 +7,7 @@ using IterTools
 using KernelDensity
 using ProgressBars
 using RData
+using Revise
 using Statistics
 
 include("AALA_calibration_functions.jl")
@@ -89,9 +89,9 @@ results = DataFrame(
 n_total = length(mu_grid)*length(grid_param)
 
 # Loop over mu and the grid
-@threads for mu in mu_grid
+for mu in mu_grid
     for (sigma, alpha, conc_err) in grid_param
-        for i in ProgressBar(1:n_total)
+       for i in ProgressBar(1:n_total)
             param_batch = Dict(:sigma => sigma, :conc_alpha => alpha, :conc_err => conc_err)
             loss = calibration_functions.loss_fun_alpha(mu=mu, grid_param=param_batch, calib_param=calib_param, DD=DD)
             push!(results, [mu, sigma, alpha, conc_err, loss])
