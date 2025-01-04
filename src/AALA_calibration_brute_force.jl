@@ -50,7 +50,7 @@ DD = @chain DR begin
         )                      
     end
     
-num_obs = size(DD, 1) # 2048 (300 more than in the original paper but no substantial differences in the results)
+num_obs = size(DD, 1)
 
 DD = calibration_functions.clean_density_data(DD, :den_data)
 
