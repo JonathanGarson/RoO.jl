@@ -18,4 +18,23 @@ The folders are organised as follow:
 
 **Src** : Contains the main codes for replications (see below for more details of each code), and the test folders containing the unit tests.
 
+Additional files : 
+
+**ROO_Pkg.jl** : Is a package which contain a fonction run. Using this package and the run() fonction allows to run the whole replication and open output.
+
 ## Reproduction
+
+## Replication of AALA_clean.
+
+This Julia script performs the cleaning and analysis of AALA data from a raw CSV file. It includes the following steps.
+
+In order to replicate this script we had the replicate some fonction of the author's custom package  HeadR, 
+
+1.  Loading the raw data : We note that we have slightly less observations for 2017 (572 VS 576), 2018 (630 VS 640), 2019 (549  VS 586)  and 2020 (617 VS 618).
+2. Correcting column shifts in specific years : The main cleaning and consist in correcting column shifts for certain years.
+  - mfg_HQ to identify the manufacturer’s country.
+  - E_US, E_CA, T_US, T_CA, etc., to determine the origins of engines and transmissions.
+3. Spliting split the colomn percent_content_other1 and percent_content_other2, which contains both percentage and country of origine in to distinct column other1_shr et other2_shr for percent content, other1_who and  other2_who for country code. 
+    We note 
+5. Creating aggregation variables based on assembly for NAFTA regions.
+6. Calculating market shares for Mexico, the U.S., and Canada.
