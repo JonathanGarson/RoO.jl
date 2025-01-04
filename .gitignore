@@ -7,3 +7,6 @@
 *.json
 *.RData
 *.rds
+
+# Files
+./src/test.jl
