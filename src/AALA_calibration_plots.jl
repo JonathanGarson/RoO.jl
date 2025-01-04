@@ -5,7 +5,6 @@ using KernelDensity
 using Distributions
 using Plots
 using LaTeXStrings
-using PlotShapes
 
 
 
