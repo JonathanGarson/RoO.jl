@@ -1,6 +1,8 @@
 # We test our julia functions based on the results obtained from the original paper functions. 
 
 include("../src/AALA_calibration_functions.jl")
+include("../src/AALA_clean.jl")
+
 using .AALA_calibration_functions
 using DataFrames
 using RoO
@@ -69,5 +71,55 @@ end
 
 # We test for the calibration of the model ==========================================================
 @testset "RoO.jl" begin
-    # Write your tests here.
+
+end
+
+# We test for the functions in AALA_calibration_functions.jl ========================================
+@testset "AALA_clean.jl" begin
+      
+    # Unit Test: Check summary statistics for a dataset with missing and non-missing values
+
+    #Test function summarize
+        # Test 1: Data with some missing values
+        data1 = [1.0, 2.0, missing, 4.0, 5.0, missing]
+        result1 = summarize(data1)
+
+        @test result1["mean"] == 3.0  # mean of [1.0, 2.0, 4.0, 5.0] is 3.0
+        @test result1["min"] == 1.0   # min of [1.0, 2.0, 4.0, 5.0] is 1.0
+        @test result1["max"] == 5.0   # max of [1.0, 2.0, 4.0, 5.0] is 5.0
+        @test result1["missing_count"] == 2  # There are 2 missing values
+        @test result1["nonmissing_count"] == 4  # There are 4 non-missing values
+
+        # Test 2: Data with all non-missing values
+        data2 = [10.0, 20.0, 30.0, 40.0]
+        result2 = summarize(data2)
+
+        @test result2["mean"] == 25.0  # mean of [10.0, 20.0, 30.0, 40.0] is 25.0
+        @test result2["min"] == 10.0   # min of [10.0, 20.0, 30.0, 40.0] is 10.0
+        @test result2["max"] == 40.0   # max of [10.0, 20.0, 30.0, 40.0] is 40.0
+        @test result2["missing_count"] == 0  # No missing values
+        @test result2["nonmissing_count"] == 4  # All values are non-missing
+
+        # Test 4: Data with no missing values
+        data4 = [1.0, 2.0, 3.0]
+        result4 = summarize(data4)
+
+        @test result4["mean"] == 2.0  # mean of [1.0, 2.0, 3.0] is 2.0
+        @test result4["min"] == 1.0   # min of [1.0, 2.0, 3.0] is 1.0
+        @test result4["max"] == 3.0   # max of [1.0, 2.0, 3.0] is 3.0
+        @test result4["missing_count"] == 0  # No missing values
+        @test result4["nonmissing_count"] == 3  # All values are non-missing
+
+    # Test merge_stata
+
+        # Example DataFrames for the test
+        DTx = DataFrame(id = [1, 2, 3], value = [10, 20, 30])
+        DTy = DataFrame(id = [2, 3, 4], value = [200, 300, 400])
+        
+        # Perform the merge
+        result = merge_stata(DTx, DTy, :id)
+        
+        # Check if the result is a DataFrame
+        @test typeof(result) == DataFrame
+
 end
