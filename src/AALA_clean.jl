@@ -709,7 +709,7 @@ DR[!, :nafta_shr_lib] = DR[!, :us_ca_shr] .+ coalesce.(DR[!, :mx_shr_lib], 0.0)
 DR[!, :nafta_shr_con] = DR[!, :us_ca_shr] .+ coalesce.(DR[!, :mx_shr_con], 0.0)
 
 #  Redirect output to a file
-open("nafta_shr_lib_con_rev.txt", "w") do file
+open("output/nafta_shr_lib_con_rev.txt", "w") do file
     redirect_stdout(file)
     
     println("Mexico shares by assembly location, conservative and then liberal")
