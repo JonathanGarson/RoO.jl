@@ -12,6 +12,9 @@ using Revise
 using Roots
 using StatsBase
 
+# EXPORT FUNCTIONS =============================================================
+export lambda_RCR, chi_lambda, chi_U, lambda_U, pdf_U, C_U, C_comply, C_tilde, delta_max, delta_star, delta_circ, beta_draws, ubeta_draws, clean_density_data, sim_lambda, sim_lambda_alpha, sim_lambda_alpha_o, sim_lambda_alpha_DRF, sim_avg_RCS_alpha, sim_choice, sim_avg_RCS_alpha_DRF, sim_choice_DRF, loss_fun_alpha, brut_force_optim
+
 # BASE FUNCTIONS ==============================================================
 
 function lambda_RCR(RCR::Union{Float64, AbstractVector{Float64}}, alpha::Union{Float64, AbstractVector{Float64}})
@@ -29,7 +32,6 @@ function lambda_RCR(RCR::Union{Float64, AbstractVector{Float64}}, alpha::Union{F
         return 0.0 <= alpha < RCR ? (RCR - alpha) / (1 - alpha) : 0.0
     end
 end
-
 
 #Je pense que cette fonction ne concerne pas des vecteurs, 
 # sinon i faudrait ajouter des broadcasts
@@ -170,7 +172,7 @@ end
 # 1. Calibration of the model to lambda
 # 2. Welfare calculations using chi 
 
-#Lambda simulations simplest version =========================================
+# Lambda simulations simplest version =========================================
 
 function sim_lambda(RCR, mu, sigma, theta, tau_data, alpha_lo, alpha_hi, alpha_a, alpha_b, N)
     #  Draw the three dimensions of heterogeneity : 
