@@ -170,6 +170,51 @@ end
 # 1. Calibration of the model to lambda
 # 2. Welfare calculations using chi 
 
+Lambda simulations simplest version =========================================
+
+function sim_lambda(RCR, mu, sigma, theta, tau_data, alpha_lo, alpha_hi, alpha_a, alpha_b, N)
+    #  Draw the three dimensions of heterogeneity : 
+    # - delta : substituability of foreing vers domestic imput 
+    # - alpha : share of local production
+    # - lambda_R : cost share of compliance to RCR (regional content ratio)
+    delta = rand(LogNormal(mu, sigma), N) #always firm specific
+    alpha = alpha_lo .+ rand(Beta(alpha_a, alpha_b), N) .* (alpha_hi - alpha_lo)
+    lambda_R = lambda_RCR(RCR, alpha) # firm specific if alpha is heterogenous
+
+    # Compute firm choices given constraints
+    if length(tau_data) == 1
+        tau = tau_data[1]  # Use the single value directly
+    else
+        tau = rand(tau_data, N)  # Sample N values from tau_data
+    end
+
+    # Compute the parameter lambda_model
+    lambda_u = lambda_U(delta, theta)
+        
+    comply_cost = C_tilde(lambda_R, delta, theta)
+
+    comply_con = (comply_cost .<= tau) .& (lambda_u .<= lambda_R) # comply if cost penalty < tariff penalty and compliance is constrained if ideal lambda < required lambda
+    
+    # Compute the lambda model
+    lambda_model = lambda_R .* Int.(comply_con) .+ lambda_u .* (1 .- Int.(comply_con)) # if comply_con is true, lambda_model = lambda_R, else lambda_model = lambda_U
+    
+    RCS = alpha .* (1 .- lambda_model) .+ lambda_model # regional content share 
+
+    # Store the results in a dictionary and return it
+    return result = Dict(
+    :lambda_U => lambda_u,
+    :lambda_model => lambda_model,
+    :lambda_R => lambda_R,
+    :RCS => RCS,
+    :comply_cost => comply_cost,
+    :comply_frac => mean(comply_con),
+    :alpha => alpha,
+    :alpha_rng => extrema(alpha),
+    :delta_rng => extrema(delta),
+    :tau_rng => extrema(tau)
+) 
+end
+
 # Main function for simulating lambda and alpha =================================
 # TO BE CONSISTENT PARAMETERS MUST BE STORED IN DICTIONARY ON THE MODEL OF THE CALIBRATION
 
