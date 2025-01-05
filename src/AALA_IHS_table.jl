@@ -4,6 +4,8 @@ using StatsBase
 using CSV
 using RCall
 
+export L2norm 
+
 # Define calibration years
 calib_years = 2011:2019
 
@@ -18,6 +20,7 @@ CAMUS = ["CA", "MX", "US"]
 # Define assumptions for the Mexican share
 MEX_con_lib = "con"  # Either "con" or "lib" assumption
 DR = CSV.read("data/AALA_rev.csv", DataFrame)
+DR= filter(:year => in(calib_years), DR)
 
 #  Choose the conservative or liberal going forward, and compute data density
 if MEX_con_lib == "con"
@@ -28,7 +31,7 @@ end
 
 println(describe(DR, :all, cols=:nafta_shr))
 
-@transform!(DR, typeA = ifelse.(occursin.(r"Truck", coalesce.(DR.type, "")), "Truck", "Car/MPV"))
+@transform!(DR, :typeA = ifelse.(occursin.(r"Truck", coalesce.(DR.type, "")), "Truck", "Car/MPV"))
 
 function classify_type(type)
     if type isa Missing
@@ -39,8 +42,10 @@ function classify_type(type)
         return "Car/MPV"
     end
 end
-
-@transform!(DR, typeA = classify_type.(DR.type))
+@transform!(DR, :ellA = ifelse.(:ell .== "CA", "Canada", 
+                    ifelse.(:ell .== "US", "USA", 
+                    ifelse.(:ell .== "MX", "Mexico", missing))))
+@transform!(DR, :typeA = classify_type.(DR.type))
 
 filtered_DR = filter(row -> row.ell in CAMUS, DR)
 
@@ -50,8 +55,33 @@ DRc = combine(grouped,
     :nafta_shr => median => :median_nafta_shr,
     :nafta_shr => iqr => :iqr_nafta_shr
 )
+# Filtrer pour `typeA = "Car/MPV"`
+filtered_car = filter(:typeA => ==("Car/MPV"), DR)
 
+# Effectuer les agrégations
+DRc_car = combine(groupby(filtered_car, :ellA),
+    :carlines => x -> length(unique(x)), 
+    :nafta_shr => median => :median_nafta_shr_Car,
+    :nafta_shr => x -> quantile(x, 0.75) - quantile(x, 0.25) 
+)
 
+rename!(DRc_car, :carlines_function => :carline_uniqueN_Car)
+rename!(DRc_car, :nafta_shr_function => :iqr_nafta_shr_Car)
+delete!(DRc_car, [4])
+# Filtrer pour `typeA = "Truck"`
+filtered_truck = filter(:typeA => ==("Truck"), DR)
+
+# Effectuer les agrégations
+DRc_truck = combine(groupby(filtered_truck, :ellA),
+    :carlines => x -> length(unique(x)),
+    :nafta_shr => median => :median_nafta_shr_Truck,
+    :nafta_shr => x -> quantile(x, 0.75) - quantile(x, 0.25)
+)
+rename!(DRc_truck, :carlines_function => :carline_uniqueN_Truck)
+rename!(DRc_truck, :nafta_shr_function => :iqr_nafta_shr_Truck)
+delete!(DRc_truck, [4])
+
+DRc =  innerjoin(DRc_car, DRc_truck, on=:ellA)
 # Bring in tau
 DT = rcopy(DataFrame, R"readRDS('Data/RDS_JIE_rev/tau_index_DRF.rds')")
 
@@ -66,7 +96,7 @@ rename!(DT, :tauD => :tau_index)
 #unique model 
 # Group by V_iso_o and HS_head, and calculate uniqueN and median for V_id and tau_index
 grouped = DataFrames.groupby(DT, [:V_iso_o, :HS_head])
-aggregated = combine(grouped, 
+DTc = combine(grouped, 
     :V_id => (x -> length(unique(x))) => :V_id_uniqueN,
     :V_id => median => :V_id_median,
     :tau_index => (x -> length(unique(x))) => :tau_index_uniqueN,
@@ -89,6 +119,10 @@ for hs in unique(aggregated.HS_head)
 end
 # Display result
 println(DTc)
+select!(DTc, Not(:V_id_median_8703))
+select!(DTc, Not(:V_id_median_8704))
+select!(DTc, Not(:tau_index_uniqueN_8703))
+select!(DTc, Not(:tau_index_uniqueN_8704))
 
 # Step 1: Combine the DataFrames column-wise
 DB = hcat(DRc, DTc)
@@ -105,7 +139,7 @@ end
 DB.out = [texout(row) for row in eachrow(DB)]
 
 # Step 3: Write the LaTeX rows to a file
-output_path = "AALA_IHS_table.tex"
+output_path = "output/tables/AALA_IHS_table.tex"
 open(output_path, "w") do file
     write(file, join(DB.out, "\n"))
 end
