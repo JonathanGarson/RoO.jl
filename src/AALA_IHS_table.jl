@@ -123,10 +123,13 @@ select!(DTc, Not(:V_id_median_8703))
 select!(DTc, Not(:V_id_median_8704))
 select!(DTc, Not(:tau_index_uniqueN_8703))
 select!(DTc, Not(:tau_index_uniqueN_8704))
-
+rename!(DTc, :V_iso_o => :ellA)
+@transform!(DTc, :ellA = ifelse.(:ellA .==  "CAN", "Canada",
+                    ifelse.(:ellA .== "MEX","Mexico", "USA")))
 # Step 1: Combine the DataFrames column-wise
-DB = hcat(DRc, DTc)
-
+DB = innerjoin(DRc, DTc, on=:ellA)
+select!(DB, :ellA, :carline_uniqueN_Car,  :median_nafta_shr_Car, :V_id_uniqueN_8703, :tau_index_median_8703, :carline_uniqueN_Truck,  :median_nafta_shr_Truck, :V_id_uniqueN_8704, :tau_index_median_8704)
+unique(DTc.ellA)
 # Step 2: Create the LaTeX-formatted output for each row
 function texout(row)
     """

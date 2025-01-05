@@ -128,13 +128,12 @@ This Julia script performs the cleaning and analysis of AALA data from a raw CSV
 
 Remark : In order to replicate this script we had the replicate the fonction stata_merge of the author's custom package HeadR.
 
-### Replication of AALA_IHS_table
-
 ### Replication of AALA_calibration_functions and AALA_calibration_brut_force
 
 We provide two types of code for replications which reflect both different use and progression. 
 
-The firsts are `AALA_calibration_functions.jl` and `AALA_calibration_brute_force.jl` which are close copy of their R counterparts. These codes were made first and even though they are working, they are not optimized for Julia. We use them to produce output requiring few simulations such as **ASK MATHILDE**. 
+The firsts are `AALA_calibration_functions.jl` and `AALA_calibration_brute_force.jl` which are close copy of their R counterparts. These codes were made first and even though they are working, they are not optimized for Julia. We use them to produce output requiring few simulations such as 
+such as Table 1 , the counts and medians of NAFTA parts cost shares and tariff indexes,  (with `AALA_ISH_table.jl`) and Figure 8, the Density of  model vs data, (with `AALA_calibration_plot.jl.
 
 The seconds are `AALA_solving_alt.jl` and `AALA_grid_search_alt.jl`. These codes are optimized for Julia and largely rely on matrix manipulation to enhance speed and reduce computational requirements. `AALA_solving_alt.jl` contains all the functions necessary to solve the model and `AALA_grid_search_alt.jl` execute them and store the optimal parameters in a dictionary. 
 
@@ -154,3 +153,7 @@ And here the difference between the results of the four optimized parameters obt
 | sigma            | 0.18 | 0.18  |
 | alpha_concentration | 3.0 | 3.0 |
 | erreur_concentration        | 18        | 17   |
+
+### Replication of AALA_IHS_table
+
+### Replication of AALA_calibration_plot
