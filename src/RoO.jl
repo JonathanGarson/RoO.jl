@@ -19,7 +19,6 @@ using Statistics
 include("AALA_solving_model_alternative.jl")
 include("AALA_grid_search_alternative.jl")
 
-
 # Main function to execute the package
 
 end
