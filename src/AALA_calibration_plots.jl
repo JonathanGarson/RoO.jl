@@ -1,5 +1,6 @@
 # Load the necessary functions from a separate Julia file
 include("AALA_calibration_functions.jl")
+include("files_path.jl")
 using CSV
 using DataFrames
 using Statistics
@@ -7,8 +8,9 @@ using KernelDensity
 using Distributions
 using Plots
 using LaTeXStrings
-#using .AALA_calibration_functions
 using Random
+
+
 
 function check_or_create_directory(relative_path::String)
     # Get the absolute path based on the relative path
@@ -25,7 +27,7 @@ function check_or_create_directory(relative_path::String)
     end
 end
 
-relative_path = "data/RDS_JIE_rev/Params4"
+
 check_or_create_directory(relative_path)
 
 # Define calibration years
@@ -66,7 +68,7 @@ params = Dict(
 RCR = 100 * params[:RCR]
 #
 #Load Data
-DR = CSV.read("data/AALA_rev.csv", DataFrame)
+DR = CSV.read("$output_data/AALA_rev.csv", DataFrame)
 #
 #  Choose the conservative or liberal going forward, and compute data density
 if MEX_con_lib == "con"
@@ -173,7 +175,7 @@ println("gap: ", gap)
 println("RCR: ", RCR)
 
 # Create a PDF for the plot
-plot_path = "output/data/AALA_calib_model_data.pdf"
+plot_path = "$output_data/AALA_calib_model_data.pdf"
 
 # Set plot size (7.5 x 4 inches in R is approximately 750 x 400 pixels in Julia)
 default(size=(750, 400))
@@ -218,12 +220,6 @@ y_shaded = y_rng[(x_rng .>= RCR) .& (x_rng .<= 100)]
 plot!(x_shaded, y_shaded, fillrange = zero(x_shaded), fc=:green,  alpha=0.3, label="")
 plot!(x_rng[x_rng .< lambda_star], y_rng[x_rng .< lambda_star], fillrange = zero(x_rng[x_rng .< lambda_star]), fc=:green,  alpha=0.3, label="")
 
-#lignes : j'y arrive pas je sais pas pourquoip
-#y_max_3 = pdf_U(lambda_star, params[:theta], params[:mu], params[:sigma])  # Calculer la hauteur de la ligne verticale
-#plot!([lambda_star, lambda_star], [0, y_max], color="forestgreen", lw=1, label="")
-#y_max_2 = pdf_U(lambda_star, params[:theta], params[:mu], params[:sigma])  # Calculer la hauteur de la ligne verticale
-#plot!([lambda_star, lambda_star], [0, y_max_2], color="forestgreen", lw=1, label="")
-#plot!([lambda_star, RCR], [0, 0], color="forestgreen", lw=1, label="")
 
 # Définir les paramètres de l'ombrage
 ycap = 0.065
@@ -234,7 +230,7 @@ brk = ymax*0.85  # Point de rupture (par exemple)
 gap = 0.0015  # Écart pour la zone inférieure
 
 
-# Zone inférieure ombrée
+# Fill
 plot!(
     [RCR - eps, RCR + eps, RCR + eps, RCR - eps],  # Coordonnées x
     [brk, brk - gap, 0, 0],  # Coordonnées y
@@ -244,7 +240,7 @@ plot!(
     label=""
 )
 
-# Zone supérieure ombrée
+# Fill
 plot!(
     [RCR - eps, RCR + eps, RCR + eps, RCR - eps],  # Coordonnées x
     [ymax * 0.95, ymax * 0.95, brk, brk + gap],  # Coordonnées y
@@ -266,4 +262,4 @@ annotate!(16, 0.005, Plots.text(text_latex, 8, :right))
 text_latex = L" Complier \quad con.=0.71"
 annotate!(60, 0.022, Plots.text(text_latex, 8, :right)) 
 
-savefig("output/AALA_calib_model_data.pdf")
+savefig("$output_figures/AALA_calib_model_data.pdf")
