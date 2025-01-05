@@ -6,7 +6,7 @@ using Statistics
 using IterTools
 
 
-file_path = "Data/AALA/data_aala_raw.csv"
+file_path = "original_code/Data/AALA/data_aala_raw.csv"
 
 #Load raw data
 DR = CSV.read(file_path, DataFrame)
@@ -746,7 +746,7 @@ println(result)
 
 
 #  Redirect output to a file
-open("output/table/nafta_shr_lib_con_rev.txt", "w") do file
+open("output/tables/nafta_shr_lib_con_rev.txt", "w") do file
     redirect_stdout(file)
     
     println("Mexico shares by assembly location, conservative and then liberal")
