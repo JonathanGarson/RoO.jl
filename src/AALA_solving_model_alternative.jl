@@ -1,8 +1,6 @@
-module AALA_solving_model_alternative
-
 using Optim
 using Distributions
-using BenchmarkTools 
+using BenchmarkTools
 using KernelDensity
 using LinearAlgebra
 using DataFrames
@@ -11,33 +9,14 @@ using Chain
 using IterTools
 using ProgressBars
 
+export λ_RCR, χ_U, χ_λ, pdf_U, C_U, C_R, C_tilde, δ_max, δ_star, δ_circ, ubeta_draws, clean_density_data, simple_simulation, loss_fn_with_sim, grid_search_loss
+
 # Main Equations of the Model ========================================================================
 # These equations describe the main behavior of the model
 
-# function λ_RCR(RCR::Union{Float64, AbstractVector{Float64}}, α::Union{Float64, AbstractVector{Float64}})
-#     """
-#     This function calculates the share of regional parts costs (λ_R) based on a regional content requirement (RCR) and the proportion of assembly costs in the total cost (α).
-
-#     Parameters:
-#     RCR: float
-#         Regional content requirement
-#     α: float
-#         Proportion of assembly costs in the total cost
-
-#     Returns:
-#     float
-#         Share of regional parts costs
-#         """
-#         if α .>= 0 .&& α .< RCR
-#             λ_R = (RCR .- α)/(1 .- α)
-#         return λ_R
-#     else
-#         λ_R = 0
-#         return λ_R 
-#     end
-# end
-
-function λ_RCR(RCR::Union{Float64, AbstractVector{Float64}}, α::Union{Float64, AbstractVector{Float64}})
+# zeros(alpha) plus stable
+# ifelse.( RCR .> alpha .> 0, (RCR .- alpha) ./ (1 .- alpha), 0.0)
+function λ_RCR(RCR, α::Union{Float64, AbstractVector{Float64}})
     """
     Calculates the share of regional parts costs (λ_R) based on a regional content requirement (RCR)
     and the proportion of assembly costs in the total cost (α).
@@ -49,7 +28,8 @@ function λ_RCR(RCR::Union{Float64, AbstractVector{Float64}}, α::Union{Float64,
     Returns:
     - λ_R: Share of regional parts costs (scalar or vector)
     """
-    return ifelse.((α .>= 0) .& (α .< RCR), (RCR .- α) ./ (1 .- α), 0.0)
+    # return ifelse.((α .>= 0) .& (α .< RCR), (RCR .- α) ./ (1 .- α), 0.0)
+    return ifelse.( RCR .> α .> 0, (RCR .- α) ./ (1 .- α), zero.(α))
 end
 
 
@@ -96,7 +76,7 @@ function χ_λ(δ, θ, λ_R::Union{Float64, AbstractVector{Float64}})
 end
 
 #  Distribution of cost shares
-function pdf_U(x, θ, μ, σ, pct = true)
+function pdf_U(x, θ, μ, σ)
     """
     This function calculates the probability density function (PDF) of the cost share distribution for unrestricted allocation of production.
 
@@ -115,13 +95,11 @@ function pdf_U(x, θ, μ, σ, pct = true)
     Returns:
     float
         PDF of the cost share distribution
-    """
-    if pct == true 
-        x = x/100
-        y = x ./ (1 .- x)
-        g = pdf.(LogNormal(μ, σ), y .^ (1 ./ θ)) .* (1 ./ (θ .* x .^ 2) .* y .^ (1+1 ./ θ))
-        return pct ? g./100 : g
-    end
+    """ 
+    x = x/100
+    y = x ./ (1 .- x)
+    g = pdf.(LogNormal(μ, σ), y .^ (1 ./ θ)) .* (1 ./ (θ .* x .^ 2) .* y .^ (1+1 ./ θ))
+    return  g./100
 end
 
 # Cost function for unconstrained firms
@@ -140,8 +118,7 @@ function C_U(δ, θ)
     float
         Cost function for unconstrained firms
     """
-    index = χ_U(δ, θ) .^(1 ./ θ)
-    return index
+    return χ_U(δ, θ) .^(1 ./ θ)
 end
 
 # Cost function for constrained firms
@@ -226,9 +203,10 @@ function δ_star(λ_R, τ, θ)
     float
         Optimal foreign cost advantage
     """
-    ufn = x -> C_tilde(λ_R, x, θ) - τ
+    # ufn = x -> C_tilde(λ_R, x, θ) - τ
     dmax = δ_max(τ, θ)
-    result = Optim.optimize(ufn, 1e-6, dmax).minimizer
+    # result = Optim.optimize(ufn, 1e-6, dmax).minimizer
+    result = Optim.optimize(x -> C_tilde(λ_R, x, θ) - τ, 1e-6, dmax).minimizer
 end
 
 # Cutt off for compliant constrained firms 
@@ -339,13 +317,24 @@ function simple_simulation(RCR, μ, σ, θ, τ, α_centre, α_concentration, con
     # Estimate the optimal lambda
     λ_true = comply_constrained .* λ_R .+ (1 .- comply_constrained) .* λ_U
 
-    # Add noise to the lambda of the model
+    # Add noise to the lambda of the model #utiliser view(lambda_true) pour éviter de copier la mémoire
     λ_model = ubeta_draws(N,  λ_true[1:10], concentration_error)
 
     return λ_model
 end
 
 function loss_fn_with_sim(RCR, μ, σ, θ, τ_data, α_centre, α_concentration, concentration_error, N ; df_data::DataFrame)
+    """
+    Calculate the loss function for the given model parameters and observed data density.
+
+    Parameters:
+    - RCR, μ, σ, θ, τ_data, α_centre, α_concentration, concentration_error, N: Model parameters
+    - df_data: DataFrame with observed data density
+    
+    Returns:
+    - loss: Loss value
+    """
+    
     λ_model = simple_simulation(RCR, μ, σ, θ, τ_data, α_centre, α_concentration, concentration_error, N)
     
     # Calculate the kernell density of the model
@@ -381,8 +370,9 @@ function grid_search_loss(; RCR, θ, τ_data, α_centre, N, mu_grid, sigma_grid,
     n_total = length(mu_grid) * length(sigma_grid) * length(alpha_con_grid) * length(errcon_grid)
 
     # Preallocate results matrix
-    results = zeros(n_total, 5)  # Columns: μ, σ, alpha_con, errcon, loss
-
+    # results = zeros(5, n_total)  # Columns: μ, σ, alpha_con, errcon, loss
+    results = Array{Float64}(undef, 5, n_total)  # Columns: μ, σ, alpha_con, errcon, loss
+    
     # Iterate over all combinations of parameters
     row = 1
     for (μ, σ, alpha_con, errcon) in ProgressBar(IterTools.product(mu_grid, sigma_grid, alpha_con_grid, errcon_grid))
@@ -390,43 +380,9 @@ function grid_search_loss(; RCR, θ, τ_data, α_centre, N, mu_grid, sigma_grid,
         loss = loss_fn_with_sim(RCR, μ, σ, θ, τ_data, α_centre, alpha_con, errcon, N ; df_data = df_data)
 
         # Store results
-        results[row, :] .= [μ, σ, alpha_con, errcon, loss]
+        results[:, row] .= [μ, σ, alpha_con, errcon, loss]
         row += 1
     end
 
     return results
-end
-
-
-
-# sample = simple_simulation(0.625, 0.0, 0.2, 4.0, 1.1, 0.15, 2.0, 0.1, 10)
-# sample_sim = sample .* 100
-# density = kde(sample_sim)
-# df_sim = DataFrame(:kernell_x => density.x, :kernell_y => density.density)
-# df_sim = clean_density_data(df_sim, :den_sim)
-
-# DRAFT
-
-# # Precompute constants
-# N = 10   # Number of firms
-# RCR = 0.625  # Regional content requirement
-# θ = 4.0      # Weibull shape parameter
-# μ, σ = 0.0, 0.2  # LogNormal parameters
-# α_centre, α_concentration = 0.15, 2.0  # Beta distribution params
-# τ = 1.1      # Tariff penalty
-# concentration_error = 0.1
-
-# # Preallocate arrays
-# δ = rand(LogNormal(μ, σ), N)
-# α = rand(Beta(α_centre .* α_concentration, (1 - α_centre) .* α_concentration), N)
-# λ_R = zeros(Float64, N)
-# λ_U = zeros(Float64, N)
-# compliance_cost = zeros(Float64, N)
-# λ_model = zeros(Float64, N)
-
-# # Benchmark simulation
-# @btime simple_simulation($RCR, $μ, $σ, $θ, $τ, $α_centre, $α_concentration, $concentration_error, $N)
-
-# true_lambda_matrix = simple_simulation(RCR, μ, σ, θ, τ, α_centre, α_concentration, concentration_error, N)
-
 end

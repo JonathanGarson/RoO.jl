@@ -1,0 +1,56 @@
+## AALA_clean
+
+    ### summarize :  
+
+    Description: calculates and returns summary statistics for a given dataset. It computes the mean, minimum, maximum, the count of missing values, and the count of non-missing values in the input data. Missing values are ignored in the computation of the mean, minimum, and maximum.
+
+    Parameters: data::Vector{T}: A vector of data values. The data may contain missing values (missing). The function will skip the missing values when computing the mean, minimum, and maximum but will count them separately.
+
+    Returns : The function returns a Dict containing the following summary statistics:
+    "mean": The mean of the non-missing values in the data.
+    "min": The minimum of the non-missing values in the data.
+    "max": The maximum of the non-missing values in the data.
+    "missing_count": The total count of missing values in the data.
+    "nonmissing_count": The total count of non-missing values in the data.
+
+    ### count_rows
+    Description: The count_rows function iterates through each row of a DataFrame and applies a user-defined condition to determine whether the row satisfies the specified condition. It returns the total count of rows that satisfy the condition.
+
+    Parameters: dataframe::DataFrame: A DataFrame object that contains the data to be processed. The function will iterate through each row of this DataFrame. condition_func::Function: A function that defines the condition to be applied to each row. This function should take a row (as a NamedTuple) and return a boolean value (true or false).
+
+    Returns:The function returns an integer representing the number of rows in the DataFrame that satisfy the given condition.
+
+    ### merge_stata 
+
+    Description:The merge_stata function performs a full outer join between two DataFrames (DTx and DTy) based on a common key column, specified by by. After joining, it adds two indicator columns (stata_master and stata_using), computes a merged indicator column (stata_merge), and then removes the indicator columns. The function returns the merged DataFrame.
+
+    Parameters:
+    DTx::DataFrame: The first DataFrame that is to be merged. This will have a column stata_master added during processing.
+    DTy::DataFrame: The second DataFrame that is to be merged. This will have a column stata_using added during processing.
+    by::Symbol: The column (or columns) on which to join the DataFrames. This is specified as a symbol (e.g., :id).
+
+    Returns: The function returns a merged DataFrame containing the following: A stata_merge column that is the sum of the two indicator columns (stata_master and stata_using).The merged DataFrame from the full outer join of DTx and DTy
+
+## AALA_IHS_table.jl
+
+    ## L2norm
+    Description: The L2norm function calculates the Euclidean distance (also known as the L2 norm) between two vectors of type Float64. The Euclidean distance is computed as the square root of the sum of squared differences between the corresponding elements of the two vectors.
+
+    Parameters: u::Vector{Float64}: The first input vector of type Float64. This vector represents one point in an n-dimensional space. v::Vector{Float64}: The second input vector of type Float64. This vector represents another point in the same n-dimensional space.
+
+    Returns: The function returns a single Float64 value, which is the Euclidean distance between the two vectors u and v.
+
+    ## classify_type
+    Description:The classify_type function classifies a given type into one of three categories: "Unknown", "Truck", or "Car/MPV". If the input type is missing, it returns "Unknown". If the input type contains the substring "Truck", it returns "Truck". Otherwise, it defaults to "Car/MPV".
+
+    Parameters:type: A string or Missing. The input represents the type of a vehicle. It can be a string such as "Truck" or "Car/MPV", or it can be Missing.
+    Returns:
+
+    The function returns a string:
+                                            "Unknown" if the type is Missing.
+                                            "Truck" if the type contains the substring "Truck".
+                                            "Car/MPV" for any other input.
+
+
+
+
