@@ -47,7 +47,8 @@ DD = @chain DR begin
         )                      
     end
 
-num_obs = size(DD, 1)
+# num_obs = size(DD, 1)
+num_obs = 1758 # match the number of observations in the simulated data to avoid dimension mismatch
 
 DD = alter_solving.clean_density_data(DD, :den_data)
 
@@ -78,3 +79,9 @@ results = alter_solving.grid_search_loss(
     df_data = DD
     )
  
+# We convert our results matrix into a DataFrame and look for the parameter combination that minimizes the loss function
+results_df = DataFrame(results, [:mu, :sigma, :alpha_con, :errcon, :loss])
+best_params = @chain results_df begin
+    sort(:loss)
+    first
+end
