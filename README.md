@@ -63,8 +63,8 @@ We indicate here the minimum ressources used for replication on our own devices.
 
 The total expected running time of the replication package is:
 
-- run_short() :
-- run_long() :
+- run_short() : ~3 mn
+- run_long() : ~30 mn
 
 For the simulation and estimation of the optimal parameters : ~25 mn (which compares to 1h for the original package).
 
@@ -74,6 +74,20 @@ At the address of the replicator. The first step is to download the package RoO.
 
 ```
 ] add RoO
+```
+or alternatively in the command terminal :
+
+```
+git clone https://github.com/JonathanGarson/RoO.jl.git
+cd RoO
+julia # to turn to julia language
+```
+And in the Julia REPL : 
+
+```
+using RoO
+run_short()
+run_long()
 ```
 
 Then, to replicate easily the outputs you can run the following commands:
