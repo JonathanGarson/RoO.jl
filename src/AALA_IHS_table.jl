@@ -96,15 +96,16 @@ rename!(DT, :tauD => :tau_index)
 #unique model 
 # Group by V_iso_o and HS_head, and calculate uniqueN and median for V_id and tau_index
 grouped = DataFrames.groupby(DT, [:V_iso_o, :HS_head])
-DTc = combine(grouped, 
+aggregated = combine(grouped, 
     :V_id => (x -> length(unique(x))) => :V_id_uniqueN,
     :V_id => median => :V_id_median,
     :tau_index => (x -> length(unique(x))) => :tau_index_uniqueN,
     :tau_index => median => :tau_index_median
 )
 
+
 # Reshape to wide format
-DTc = DataFrame(V_iso_o = unique(aggregated.V_iso_o))  # Initialize wide DataFrame
+DTc = DataFrame(V_iso_o = unique(DTc.V_iso_o))  # Initialize wide DataFrame
 
 # Loop over unique HS_head values to create columns
 for hs in unique(aggregated.HS_head)
@@ -117,6 +118,7 @@ for hs in unique(aggregated.HS_head)
     insertcols!(DTc, Symbol("tau_index_uniqueN_$hs") => sub.tau_index_uniqueN)
     insertcols!(DTc, Symbol("tau_index_median_$hs") => sub.tau_index_median)
 end
+
 # Display result
 println(DTc)
 select!(DTc, Not(:V_id_median_8703))
