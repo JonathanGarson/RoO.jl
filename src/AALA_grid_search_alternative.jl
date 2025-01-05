@@ -52,9 +52,7 @@ const num_obs = size(DC, 1) # match the number of observations in the simulated 
 DD = clean_density_data(DD, :den_data)
 
 # Grid search =============================================================
-# mu_grid = collect(-0.1:0.01:0.25) # pas besoin collect
-mu_grid = -0.1:0.01:0.25 # pas besoin collect
-# sigma_grid = collect(0.0:0.01:0.25)
+mu_grid = -0.1:0.01:0.25
 sigma_grid = 0.0:0.01:0.25
 alpha_con_grid = [1,1.25,1.5,1.75,2,2.25,2.5, 3:20...]
 errcon_grid = [2:25...]
