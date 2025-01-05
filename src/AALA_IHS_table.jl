@@ -2,7 +2,8 @@ using DataFramesMeta
 using DataFrames
 using StatsBase
 using CSV
-using RCall
+using RData
+include("files_path.jl")
 
 export L2norm 
 
@@ -19,7 +20,7 @@ CAMUS = ["CA", "MX", "US"]
 
 # Define assumptions for the Mexican share
 MEX_con_lib = "con"  # Either "con" or "lib" assumption
-DR = CSV.read("data/AALA_rev.csv", DataFrame)
+DR = CSV.read("$output_data/AALA_rev.csv", DataFrame)
 DR= filter(:year => in(calib_years), DR)
 
 #  Choose the conservative or liberal going forward, and compute data density
@@ -83,7 +84,7 @@ delete!(DRc_truck, [4])
 
 DRc =  innerjoin(DRc_car, DRc_truck, on=:ellA)
 # Bring in tau
-DT = rcopy(DataFrame, R"readRDS('Data/RDS_JIE_rev/tau_index_DRF.rds')")
+DT = DataFrame(load("$input_clean_data/tau_index_DRF.rds"))
 
 count_non_missing = count(!ismissing, DT.tauD)
 
@@ -105,7 +106,7 @@ aggregated = combine(grouped,
 
 
 # Reshape to wide format
-DTc = DataFrame(V_iso_o = unique(DTc.V_iso_o))  # Initialize wide DataFrame
+DTc = DataFrame(V_iso_o = unique(aggregated.V_iso_o))  # Initialize wide DataFrame
 
 # Loop over unique HS_head values to create columns
 for hs in unique(aggregated.HS_head)
