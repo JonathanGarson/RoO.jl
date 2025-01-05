@@ -50,7 +50,7 @@ We indicate here the minimum ressources used for replication on our own devices.
 
 *CPU*: Intel i5 13600k - 3.5Ghz - up to 20 threads
 
-*Multithreading*: the entire computation has been run on a single core to ease portability and CPU requirement from device to device. From this perspective we depart from the authors more demanding computational requirements.
+*Multithreading*: the entire computation has been run on a single thread to ease portability and limits CPU requirements from device to device. From this perspective we depart from the authors more demanding computational requirements.
 
 *RAM* : ~3.6 Gb / 32Go available
 
@@ -90,6 +90,7 @@ run_long() # generate the outputs with the simulation
 | AALA_clean.jl            | nafta_shr_lib_con_rev.txt (table) | output/table   |
 | AALA_calibration_plot.jl | AALA_calib_model_data.pdf (graph) | output/figures |
 | AALA_IHS_table.jl        | AALA_IHS_table.tex (table)        | output/table   |
+|AALA_grid_search_alt.jl| optimal_params.jls | output/parameters|
 
 ## Details on the replication code
 
@@ -130,3 +131,26 @@ Remark : In order to replicate this script we had the replicate the fonction sta
 ### Replication of AALA_IHS_table
 
 ### Replication of AALA_calibration_functions and AALA_calibration_brut_force
+
+We provide two types of code for replications which reflect both different use and progression. 
+
+The firsts are `AALA_calibration_functions.jl` and `AALA_calibration_brute_force.jl` which are close copy of their R counterparts. These codes were made first and even though they are working, they are not optimized for Julia. We use them to produce output requiring few simulations such as **ASK MATHILDE**. 
+
+The seconds are `AALA_solving_alt.jl` and `AALA_grid_search_alt.jl`. These codes are optimized for Julia and largely rely on matrix manipulation to enhance speed and reduce computational requirements. `AALA_solving_alt.jl` contains all the functions necessary to solve the model and `AALA_grid_search_alt.jl` execute them and store the optimal parameters in a dictionary. 
+
+Here are the results in term of computational requirements :
+
+| Category          | Head, Mayer & Melitz                            |  Blanchon, Garson & Ortiz  |
+| ------------------------ | --------------------------------- | -------------- |
+| Computation time            | ~ 1 hour                    | ~ 25 minutes    |
+| Computation complexity            | Mulithreading | Single thread   |
+| OS limitations | Multithreading implemented only available on MacOS, makes computation on Windows very long (>5 hours) | Theoretically none |
+| RAM        | Not known        | 3.6 Gb   |
+
+And here the difference between the results of the four optimized parameters obtained by HMM and obtained MGO:
+| Parameters          | Head, Mayer & Melitz                            |  Blanchon, Garson & Ortiz  |
+| ------------------------ | --------------------------------- | -------------- |
+| mu            | 0.12                    | 0.2    |
+| sigma            | 0.18 | 0.18  |
+| alpha_concentration | 0.15 | 3.0 |
+| erreur_concentration        | 18        | 17   |
