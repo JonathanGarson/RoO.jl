@@ -82,15 +82,8 @@ git clone https://github.com/JonathanGarson/RoO.jl.git
 cd RoO
 julia # to turn to julia language
 ```
-And in the Julia REPL : 
 
-```
-using RoO
-run_short()
-run_long()
-```
-
-Then, to replicate easily the outputs you can run the following commands:
+Then, to replicate easily the outputs you can run the following commands in the Julia REPL:
 
 ```
 using RoO
