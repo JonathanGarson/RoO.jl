@@ -152,5 +152,5 @@ And here the difference between the results of the four optimized parameters obt
 | ------------------------ | --------------------------------- | -------------- |
 | mu            | 0.12                    | 0.2    |
 | sigma            | 0.18 | 0.18  |
-| alpha_concentration | 0.15 | 3.0 |
+| alpha_concentration | 3.0 | 3.0 |
 | erreur_concentration        | 18        | 17   |
