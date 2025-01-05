@@ -3,9 +3,11 @@
 # Path to the data file
 const input_raw_data = "data/AALA"
 const input_clean_data = "data/RDS_JIE_rev"
+const relative_path = "data/RDS_JIE_rev/Params4"
 
 # Path to the output files
 const output_data = "output/data"
 const output_figures = "output/figures"
 const output_tables = "output/tables"
 const output_parameters = "output/parameters"
+
