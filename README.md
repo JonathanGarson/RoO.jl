@@ -46,7 +46,26 @@ Additional files :
 
 We indicate here the minimum ressources used for replication on our own devices. Expected run time may vary depending on your own machine.
 
+*OS*: Windows 11
+
+*CPU*: Intel i5 13600k - 3.5Ghz - up to 20 threads
+
+*Multithreading*: the entire computation has been run on a single core to ease portability and CPU requirement from device to device. From this perspective we depart from the authors more demanding computational requirements.
+
+*RAM* : ~3.6 Gb / 32Go available
+
+*GPU*: N/A
+
+*Software version* : Julia 1.6
+
 ## Expected run time
+
+The total expected running time of the replication package is: 
+
+- run_short() :
+- run_long() :
+
+For the simulation and estimation of the optimal parameters : ~25 mn (which compares to 1h for the original package).
 
 ## Reproduction
 
@@ -109,29 +128,29 @@ This Julia script performs the cleaning and analysis of AALA data from a raw CSV
 - E_US, E_CA, T_US, T_CA, etc., to determine the origins of engines and transmissions.
 
 3. Split  the colomn percent_content_other1 and percent_content_other2, which contains both percentage and country of origine in to distinct column other1_shr et other2_shr for percent content, other1_who and  other2_who for country code.
-   We note an errer in the package replication : Running DR[,other2_shr := as.numeric(st_left(percent_content_other2,"%"))]produces only NA wich is not consistent with what the code intend to do.
-   using the following command instead allows to accuratly capture the percentage value in other2_shr :
-   DR[, numeric_part := fifelse(!is.na(percent_content_other2) & grepl("^[0-9]+"percent_content_other2),ub("^([0-9]+).*", "\\1", percent_content_other2), NA_character_)]
-   DR[,other2_who := st_right(percent_content_other2,"%")]
-   We notice a similar issue while creating the column other2_who.
+   We note an error in the package replication : Running `DR[,other2_shr := as.numeric(st_left(percent_content_other2,"%"))]` produces only `NA` wich is not consistent with what the code intend to do.
+   using the following command instead allows to accuratly capture the percentage value in `other2_shr` : `DR[, numeric_part := fifelse(!is.na(percent_content_other2)`&`grepl("^[0-9]+"percent_content_other2),ub("^([0-9]+).*", "\\1", percent_content_other2), NA_character_)]` `DR[,other2_who := st_right(percent_content_other2,"%")]`
+   We notice a similar issue while creating the column `other2_who`.
    This could lead to potential descrapency between the article's outputs and our own outputs.
-4. Filtering and Tabulating Rows Based on other2_who Column, and Correcting Specific Data Issues
-5. Standardize country codes (US, CA, MX) for assembly locations, filters rows based on these codes, computes summary statistics for the us_ca_shr column, and counts rows where both other1_who and other2_who contain "M," ensuring consistency and addressing data issues.
-6. Creating mx_shr column and assign values from other1_shr and other2_shr to the mx_shr column for rows where other1_who or other2_who contains "M." Filter rows based on assembly location (USCAMX, MX, and MX2 sets) and compute summary statistics (mean, min, max, and counts of missing/non-missing values) for the mx_shr column across these subsets.
-7. Melt the dataset (DR) to reshape columns representing countries (ell2CA, ell2US, ell2MX) into a long format, expanding the dataset.Filter rows with valid entries in the add_plant column and rename melted columns for clarity.Drop columns starting with ell2 and append the reshaped data back to the main dataset.
-8. Add a column (nafta_assembly) to identify assembly locations within NAFTA countries (US, CA, MX).
-   Compute a residual share (rem_shr) for rows where assembly location belongs to NAFTA and key data is missing or incomplete.Update rem_shr values iteratively, accounting for conditions involving other1_shr and related columns.
-9. Compute Ratios and Summary Statistics : Calculate the ratio of Mexican shares (mx_shr) to residual shares (rem_shr) for NAFTA assembly rows and summarize the results. Group by assembly location (ell) to compute means and medians for the mx_shr_rem ratio. Derive specific statistics for Mexican shares when assembly is based in Mexico.
+4. Filtering and Tabulating Rows Based on `other2_who` Column, and Correcting Specific Data Issues
+5. Standardize country codes (US, CA, MX) for assembly locations, filters rows based on these codes, computes summary statistics for the `us_ca_shr` column, and counts rows where both `other1_who` and `other2_who` contain "M," ensuring consistency and addressing data issues.
+6. Creating `mx_shr column` and assign values from `other1_shr` and `other2_shr` to the `mx_shr` column for rows where `other1_who` or `other2_who` contains "M." Filter rows based on assembly location (USCAMX, MX, and MX2 sets) and compute summary statistics (mean, min, max, and counts of missing/non-missing values) for the `mx_shr` column across these subsets.
+7. Melt the dataset (DR) to reshape columns representing countries (ell2CA, ell2US, ell2MX) into a long format, expanding the dataset. Filter rows with valid entries in the `add_plant` column and rename melted columns for clarity.Drop columns starting with ell2 and append the reshaped data back to the main dataset.
+8. Add a column (`nafta_assembly`) to identify assembly locations within NAFTA countries (US, CA, MX).
+   Compute a residual share (`rem_shr`) for rows where assembly location belongs to NAFTA and key data is missing or incomplete.Update `rem_shr` values iteratively, accounting for conditions involving `other1_shr` and related columns.
+9. Compute Ratios and Summary Statistics : Calculate the ratio of Mexican shares (`mx_shr`) to residual shares (`rem_shr`) for NAFTA assembly rows and summarize the results. Group by assembly location (`ell`) to compute means and medians for the `mx_shr_rem` ratio. Derive specific statistics for Mexican shares when assembly is based in Mexico.
 10. Merge and Validate Calculations:
 
     1. Perform a custom merge operation to integrate grouped statistics into the dataset.
-    2. Generate conservative (mx_shr_con) and liberal (mx_shr_lib) assumptions for Mexican shares based on available data and capping where necessary.
+    2. Generate conservative (`mx_shr_con`) and liberal (`mx_shr_lib`) assumptions for Mexican shares based on available data and capping where necessary.
 11. Summarize Shares by Assumptions
 
-    1. Compute overall NAFTA shares (nafta_shr_con and nafta_shr_lib) based on assembly location.
-    2. Create summary statistics for NAFTA and Mexican shares across conservative and liberal assumptions by assembly location (ell).
-12. Output and Save Results : Write detailed summaries for each assembly location and assumption to a text file (nafta_shr_lib_con_rev.txt).Save the final dataset to a CSV file (data/AALA_rev.csv) for further analysis or reporting.
+    1. Compute overall NAFTA shares (`nafta_shr_con` and `nafta_shr_lib`) based on assembly location.
+    2. Create summary statistics for NAFTA and Mexican shares across conservative and liberal assumptions by assembly location (`ell`).
+12. Output and Save Results : Write detailed summaries for each assembly location and assumption to a text file (`nafta_shr_lib_con_rev.txt`).Save the final dataset to a CSV file (`data/AALA_rev.csv`) for further analysis or reporting.
 
-Remark : In order to replicate this script we had the replicate the fonction stata_merge of the author's custom package  HeadR.
+Remark : In order to replicate this script we had the replicate the fonction stata_merge of the author's custom package HeadR.
 
 ## Replication of AALA_IHS_table
+
+## Replication of AALA_calibration_functions and AALA_calibration_brut_force
