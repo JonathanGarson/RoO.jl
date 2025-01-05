@@ -9,4 +9,3 @@ const output_data = "output/data"
 const output_figures = "output/figures"
 const output_tables = "output/tables"
 const output_parameters = "output/parameters"
-
