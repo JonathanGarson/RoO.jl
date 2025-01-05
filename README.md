@@ -4,6 +4,8 @@
 
 This project is the replication of **[Head&amp;al (2024)](https://www.sciencedirect.com/science/article/pii/S0022199624000357)** paper on the Laffer Curve of Rule of Origin. The objective is to reproduce the main results obtained by the authors using Julia and, eventually, improving on the speed to simulate the results. This is a last year work of the graduate program in Economics of [SciencesPo Paris Economic Department](https://www.sciencespo.fr/department-economics/), for the class of computational economics taught by Professor [Florian Oswald](https://floswald.github.io/).
 
+We opted to replicate the data cleaning procedures, the generation of key figures, and the primary simulation presented in the paper. This served as a foundation for producing additional replication outputs in subsequent stages.
+
 **Authors : Mathilde Blanchon & Jonathan Garson & Marie-Ange Ortiz**
 
 ## Reproduction
@@ -89,6 +91,11 @@ The total expected running time of the replication package is:
 - run_long() : ~30 mn
 
 For the simulation and estimation of the optimal parameters : ~25 mn (which compares to 1h for the original package).
+
+## Data Availibility
+| Dataset          | Availibility                         |  Cleaning Code - Blanchon, Garson & Ortiz  | Cleaning Code - Head, Mayer & Melitz  |
+| ------------------------ | --------------------------------- | -------------- | -------------- |
+|             |                     |     | |
 
 ## Details on the replication code
 
