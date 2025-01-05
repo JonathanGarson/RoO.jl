@@ -746,7 +746,7 @@ println(result)
 
 
 #  Redirect output to a file
-open("output/nafta_shr_lib_con_rev.txt", "w") do file
+open("output/table/nafta_shr_lib_con_rev.txt", "w") do file
     redirect_stdout(file)
     
     println("Mexico shares by assembly location, conservative and then liberal")
