@@ -9,4 +9,4 @@
 *.rds
 
 # Files
-src/test.jl
+docs/build/
