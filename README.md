@@ -32,6 +32,8 @@ The folders are organised as follow:
 │    ├── figures       <- contains the figures in latex and pdf/png/etc. formats.
 │    └── tables        <- contains the tables in latex and pdf/png/etc. formats.
 │
+├── test               <- Contains the unit test files.
+│
 └── src                <- Source code for use in this project.
 ````
 Additional files :
@@ -50,16 +52,16 @@ At the address of the replicator. The first step is to download the package RoO.
 ```
 ] add RoO
 ```
-Then, to replicate easily the output you can run the following commands:
+Then, to replicate easily the outputs you can run the following commands:
 
 ```
 using RoO
 
-run_short() # generate the outputs without simulation to lower computation and generation time
+run_short() # generate the outputs without simulation to reduce computational requirements and generation time
 run_long() # generate the outputs with the simulation 
 ```
 
-*TABLE FOR OUTPUT CODE AND FOLDER*
+**TABLE FOR OUTPUT CODE AND FOLDER**
 
 ### Replication of AALA_clean.
 
