@@ -1,0 +1,158 @@
+Mexico shares by assembly location, conservative and then liberal
+Summary for ell = CA and assumption = con:
+Summary Stats:
+Length:         220
+Missing Count:  0
+Mean:           5.922727
+Std. Deviation: 9.491570
+Minimum:        0.000000
+1st Quartile:   0.000000
+Median:         0.000000
+3rd Quartile:   15.000000
+Maximum:        41.000000
+Type:           Union{Missing, Int64}
+nothing
+Summary for ell = CA and assumption = lib:
+Summary Stats:
+Length:         220
+Missing Count:  0
+Mean:           13.361065
+Std. Deviation: 6.102868
+Minimum:        0.000000
+1st Quartile:   10.345159
+Median:         14.000000
+3rd Quartile:   15.000000
+Maximum:        41.000000
+Type:           Float64
+nothing
+Summary for ell = MX and assumption = con:
+Summary Stats:
+Length:         419
+Missing Count:  0
+Mean:           41.510740
+Std. Deviation: 17.150383
+Minimum:        0.000000
+1st Quartile:   32.000000
+Median:         40.000000
+3rd Quartile:   55.000000
+Maximum:        79.000000
+Type:           Union{Missing, Int64}
+nothing
+Summary for ell = MX and assumption = lib:
+Summary Stats:
+Length:         419
+Missing Count:  0
+Mean:           42.180916
+Std. Deviation: 15.682385
+Minimum:        2.933417
+1st Quartile:   32.000000
+Median:         40.000000
+3rd Quartile:   55.000000
+Maximum:        79.000000
+Type:           Float64
+nothing
+Summary for ell = US and assumption = con:
+Summary Stats:
+Length:         1200
+Missing Count:  0
+Mean:           5.987500
+Std. Deviation: 11.323760
+Minimum:        0.000000
+1st Quartile:   0.000000
+Median:         0.000000
+3rd Quartile:   15.000000
+Maximum:        60.000000
+Type:           Union{Missing, Int64}
+nothing
+Summary for ell = US and assumption = lib:
+Summary Stats:
+Length:         1200
+Missing Count:  0
+Mean:           13.994100
+Std. Deviation: 8.293204
+Minimum:        0.000000
+1st Quartile:   10.673505
+Median:         14.000000
+3rd Quartile:   15.000000
+Maximum:        60.000000
+Type:           Float64
+nothing
+Nafta shares by assembly location
+Summary for ell = CA and assumption = con:
+Summary Stats:
+Length:         220
+Missing Count:  0
+Mean:           67.368182
+Std. Deviation: 16.223211
+Minimum:        1.000000
+1st Quartile:   62.000000
+Median:         70.000000
+3rd Quartile:   78.000000
+Maximum:        95.000000
+Type:           Float64
+nothing
+Summary for ell = CA and assumption = lib:
+Summary Stats:
+Length:         220
+Missing Count:  0
+Mean:           74.806520
+Std. Deviation: 15.018133
+Minimum:        15.000000
+1st Quartile:   71.000000
+Median:         79.000000
+3rd Quartile:   84.000000
+Maximum:        95.000000
+Type:           Float64
+nothing
+Summary for ell = MX and assumption = con:
+Summary Stats:
+Length:         419
+Missing Count:  0
+Mean:           62.940334
+Std. Deviation: 19.173940
+Minimum:        0.000000
+1st Quartile:   49.000000
+Median:         60.000000
+3rd Quartile:   78.000000
+Maximum:        97.000000
+Type:           Float64
+nothing
+Summary for ell = MX and assumption = lib:
+Summary Stats:
+Length:         419
+Missing Count:  0
+Mean:           63.610511
+Std. Deviation: 18.924592
+Minimum:        5.866833
+1st Quartile:   49.000000
+Median:         61.000000
+3rd Quartile:   80.000000
+Maximum:        97.000000
+Type:           Float64
+nothing
+Summary for ell = US and assumption = con:
+Summary Stats:
+Length:         1200
+Missing Count:  0
+Mean:           61.240833
+Std. Deviation: 17.613907
+Minimum:        1.000000
+1st Quartile:   50.000000
+Median:         65.000000
+3rd Quartile:   74.000000
+Maximum:        97.000000
+Type:           Float64
+nothing
+Summary for ell = US and assumption = lib:
+Summary Stats:
+Length:         1200
+Missing Count:  0
+Mean:           69.247434
+Std. Deviation: 16.377668
+Minimum:        5.000000
+1st Quartile:   60.000000
+Median:         72.000000
+3rd Quartile:   81.250000
+Maximum:        97.000000
+Type:           Float64
+nothing
