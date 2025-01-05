@@ -10,6 +10,7 @@ using ProgressBars
 using RData
 using Revise
 using Statistics
+using Serialization
 
 include("AALA_solving_model_alternative.jl")
 
@@ -52,12 +53,10 @@ const num_obs = size(DC, 1) # match the number of observations in the simulated 
 DD = clean_density_data(DD, :den_data)
 
 # Grid search =============================================================
-# mu_grid = collect(-0.1:0.01:0.25) # pas besoin collect
-mu_grid = -0.1:0.01:0.25 # pas besoin collect
-# sigma_grid = collect(0.0:0.01:0.25)
-sigma_grid = 0.0:0.01:0.25
-alpha_con_grid = [1,1.25,1.5,1.75,2,2.25,2.5, 3:20...]
-errcon_grid = [2:25...]
+const mu_grid = -0.1:0.01:0.25
+const sigma_grid = 0.0:0.01:0.25
+const alpha_con_grid = [1,1.25,1.5,1.75,2,2.25,2.5, 3:20...]
+const errcon_grid = [2:25...]
 
 # We run the grid search
 @time results = grid_search_loss(
@@ -82,3 +81,20 @@ best_params = @chain results_df begin
 end
 
 # we save the optimal parameters
+optimal_params = Dict(
+    :mu_opt => best_params[1],
+    :sigma_opt => best_params[2],
+    :alpha_con_opt => best_params[3],
+    :errcon_opt => best_params[4],
+    :loss_opt => best_params[5],
+    :alpha_base => alpha_base,
+    :theta_base => theta_base,
+    :RCR => RCR_pct,
+    :tau => tau,
+    :num_obs => num_obs,
+    :conc_err => conc_err,
+    :calib_year => calib_year
+    )
+
+# save the optimal parameters
+serialize("output/parameters/optimal_params.jls", optimal_params)
