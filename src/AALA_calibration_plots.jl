@@ -173,7 +173,7 @@ println("gap: ", gap)
 println("RCR: ", RCR)
 
 # Create a PDF for the plot
-plot_path = "data/output/AALA_calib_model_data.pdf"
+plot_path = "output/data/AALA_calib_model_data.pdf"
 
 # Set plot size (7.5 x 4 inches in R is approximately 750 x 400 pixels in Julia)
 default(size=(750, 400))
@@ -202,43 +202,68 @@ xlabels = [
 p = plot(x_rng, y_rng, color="orange", lw=3, label=L"Model (no ROO)", xlabel="Nafta cost share (%)", ylabel="Density",
     xlim=(0, 100), ylim=(0.0, ymax), legend=:topleft)
 
+
+xticks!([0, 18.18, 62.5, 100], ["0", L"\lambda_U(\delta^*)", L"\lambda_R", "100"])
 # Add data density
 plot!(lambda_data_d.x, lambda_data_d.density, color="black", lw=2, label="Data")
 
 # Add unconstrained density
-plot!(x_rng[x_rng .< lambda_star], y_rng[x_rng .< lambda_star], color="forestgreen", lw=1, label="Non-compliers")
-
-x_shaded = x_rng[x_rng .<= lambda_star]  # Select x values below lambda_star
-y_shaded = y_rng[x_rng .<= lambda_star] 
-y_0 =zeros(length(x_shaded)) 
-fill_between = x_rng[x_rng .< lambda_star]  # Function defining the region to shade
-plot!( fill_between=(y_0, y_shaded), color=:forestgreen, alpha=0.5, label="Shaded Area")
+plot!(x_rng[x_rng .< lambda_star], y_rng[x_rng .< lambda_star], color="forestgreen", lw=1, label=L"Model(ROO)")
+plot!(x_rng[x_rng .> RCR], y_rng[x_rng .> RCR], color="forestgreen", lw=1, label="")
+y_value = pdf_U(lambda_star,params[:theta], params[:mu], params[:sigma])  # Valeur de la PDF à lambda_star
 
 
-# Add constrained compliance marker
-plot!(fill_between([RCR - eps, RCR + eps], [0, 0], [brk - gap, ymax * 0.95],
-    color="forestgreen", alpha=0.25, label=""))
+x_shaded = x_rng[(x_rng .>= RCR) .& (x_rng .<= 100)]
+y_shaded = y_rng[(x_rng .>= RCR) .& (x_rng .<= 100)]
+plot!(x_shaded, y_shaded, fillrange = zero(x_shaded), fc=:green,  alpha=0.3, label="")
+plot!(x_rng[x_rng .< lambda_star], y_rng[x_rng .< lambda_star], fillrange = zero(x_rng[x_rng .< lambda_star]), fc=:green,  alpha=0.3, label="")
 
-# Add text and markers
-annotate!(RCR, ymax * 0.95, text("Comply con. = $(round(sim_out[:comply_frac], digits=2))", :left, 8))
-annotate!(lambda_star - 3 * eps, ymax / 3, text("Non-compliers", :center, 8))
-x_start= 10
-y_start= 0.010  # Starting point of the arrow
-dx = 14
-dy =10  # Direction and length
-quiver!(
-    [x_start], [y_start],  # Starting point
-    quiver=([dx], [dy]),   # Direction and length
-    arrow=true,            # Enable arrowhead
-    lw=1,                  # Line width
-    color=:black
+#lignes : j'y arrive pas je sais pas pourquoip
+#y_max_3 = pdf_U(lambda_star, params[:theta], params[:mu], params[:sigma])  # Calculer la hauteur de la ligne verticale
+#plot!([lambda_star, lambda_star], [0, y_max], color="forestgreen", lw=1, label="")
+#y_max_2 = pdf_U(lambda_star, params[:theta], params[:mu], params[:sigma])  # Calculer la hauteur de la ligne verticale
+#plot!([lambda_star, lambda_star], [0, y_max_2], color="forestgreen", lw=1, label="")
+#plot!([lambda_star, RCR], [0, 0], color="forestgreen", lw=1, label="")
+
+# Définir les paramètres de l'ombrage
+ycap = 0.065
+ymax = maximum(vcat(lambda_data_d_y, lambda_U_d_y))
+ymax = 1.2*min(ymax,ycap)
+eps = 0.5  # Petit offset autour de RCR
+brk = ymax*0.85  # Point de rupture (par exemple)
+gap = 0.0015  # Écart pour la zone inférieure
+
+
+# Zone inférieure ombrée
+plot!(
+    [RCR - eps, RCR + eps, RCR + eps, RCR - eps],  # Coordonnées x
+    [brk, brk - gap, 0, 0],  # Coordonnées y
+    seriestype=:shape,
+    color=:black,
+    alpha=0.25,
+    label=""
 )
 
+# Zone supérieure ombrée
+plot!(
+    [RCR - eps, RCR + eps, RCR + eps, RCR - eps],  # Coordonnées x
+    [ymax * 0.95, ymax * 0.95, brk, brk + gap],  # Coordonnées y
+    seriestype=:shape,
+    color=:black,
+    alpha=0.25,
+    label=""
+)
 
-# Add legend with LaTeX labels
-plot!(legend=:topleft)
-plot!(label="", xlabel="", ylabel="")
+text_latex = L" \theta=4,\quad \mu=0,\quad \sigma=0.2, \quad \theta=1.1, \quad \alpha=0"
+annotate!(100, 0.025, Plots.text(text_latex, 8, :right))  
 
+text_latex = L" Comply\quad  uncon. "
+annotate!(80, 0.005, Plots.text(text_latex, 8, :right))  
 
-# Save to PDF
-savefig(p, "Plots_JIE_rev/AALA_calib/AALA_calib_model_data.pdf")
+text_latex = L" Non-compliers"
+annotate!(16, 0.005, Plots.text(text_latex, 8, :right))  
+
+text_latex = L" Complier \quad con.=0.71"
+annotate!(60, 0.022, Plots.text(text_latex, 8, :right)) 
+
+savefig("output/AALA_calib_model_data.pdf")
