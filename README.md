@@ -157,4 +157,10 @@ And here the difference between the results of the four optimized parameters obt
 
 ### Replication of AALA_IHS_table
 
+AALA_IHS_table produces Table 1 of the paper, which summarizes key statistics from the AALA data. It presents, for each North American assembly country (Canada, Mexico, and the USA), the following metrics:
+- The number of vehicles.
+- The median parts cost share  for cars (including Sport Utility and Multi-Purpose Vehicles such as minivans) and light trucks (pickup trucks and vans).
+
 ### Replication of AALA_calibration_plot
+
+AALA_calibration_plot generates a graph with the empirical distribution of regional shares for carlines produced in Canada, Mexico, or the USA, pooled across the years 2011–2019, during which the RCR (Regional Content Requirement) was 62.5%. The resulting distribution is depicted as the black line in Figure 8. This visual representation allows for a comparison between observed data (AALA data) and model predictions. This graph is designed to facilitate the comparison of theoretical model predictions with real-world data, emphasizing areas of misalignment.
