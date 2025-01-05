@@ -90,11 +90,6 @@ end
     @test δ_circ(0.6, 4.0) .> 0.0 
 end
 
-
-# @testset "RoO.jl" begin
-
-# end
-
 @testset "AALA_clean.jl" begin
       
     # Unit Test: Check summary statistics for a dataset with missing and non-missing values
