@@ -12,11 +12,12 @@ using Revise
 using Statistics
 using Serialization
 
-include("AALA_solving_model_alternative.jl")
+include("files_path.jl")
+include("AALA_solving_alt.jl")
 
 # loading data =============================================================
-DR = DataFrame(load("data/RDS_JIE_rev/AALA_rev.rds"))
-DC = DataFrame(load("data/RDS_JIE_rev/tau_index_DRF.rds")) # call only the relevant columns
+DR = DataFrame(load("$input_clean_data/AALA_rev.rds"))
+DC = DataFrame(load("$input_clean_data/tau_index_DRF.rds")) # call only the relevant columns
 
 # Calibration of the model ================================================
 const calib_year = 2011:2019
@@ -59,7 +60,7 @@ const alpha_con_grid = [1,1.25,1.5,1.75,2,2.25,2.5, 3:20...]
 const errcon_grid = [2:25...]
 
 # We run the grid search
-@time results = grid_search_loss(
+results = grid_search_loss(
     RCR = RCR_pct, 
     θ = theta_base, 
     τ_data = tau, 
@@ -97,4 +98,4 @@ optimal_params = Dict(
     )
 
 # save the optimal parameters
-serialize("output/parameters/optimal_params.jls", optimal_params)
+serialize("$output_parameters/optimal_params.jls", optimal_params)
