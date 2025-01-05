@@ -1,5 +1,4 @@
 # This file contains the functions used to calibrate the AALA model.
-module AALA_calibration_functions
 
 using Chain
 using Distributions
@@ -18,6 +17,22 @@ export lambda_RCR, chi_lambda, chi_U, lambda_U, pdf_U, C_U, C_comply, C_tilde, d
 # BASE FUNCTIONS ==============================================================
 
 function lambda_RCR(RCR::Union{Float64, AbstractVector{Float64}}, alpha::Union{Float64, AbstractVector{Float64}})
+    """
+    Compute the regional content ratio (RCR) as a function of alpha.
+
+    Parameters
+    ----------
+    RCR : Union{Float64, AbstractVector{Float64}}
+        The regional content ratio.
+    alpha : Union{Float64, AbstractVector{Float64}}
+        The share of local production.
+
+    Returns
+    -------
+    Union{Float64, AbstractVector{Float64}}
+        The regional content ratio as a function of alpha.
+    """
+
     if isa(alpha, AbstractVector) && isa(RCR, AbstractVector)
         # Handle vector-vector input
         return [(0.0 <= a < r ? (r - a) / (1 - a) : 0.0) for (a, r) in zip(alpha, RCR)]
@@ -33,11 +48,25 @@ function lambda_RCR(RCR::Union{Float64, AbstractVector{Float64}}, alpha::Union{F
     end
 end
 
-#Je pense que cette fonction ne concerne pas des vecteurs, 
-# sinon i faudrait ajouter des broadcasts
-
 # chi_R as a function  of lambda_R 
 function chi_lambda(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
+    """
+    Compute the cost share of compliance to RCR (regional content ratio) as a function of lambda_R.
+        
+    Parameters
+    ----------
+    lambda_R : Union{Float64, AbstractVector{Float64}}
+        The cost share of compliance to RCR.
+    delta : Union{Float64, AbstractVector{Float64}}
+        The substitutability of foreign versus domestic input.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+    
+    Returns
+    -------
+    Union{Float64, AbstractVector{Float64}}
+        The cost share of compliance to RCR as a function of lambda_R.
+    """
     # Compute denom element-wise
     denom = 1 .+ ((1 ./ lambda_R .- 1) ./ delta) .^ (theta / (theta + 1))
 
@@ -47,16 +76,69 @@ end
 
 # Unconstrained parts share
 function chi_U(delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
+    """
+    Compute the unconstrained cost share as a function of delta.
+        
+    Parameters
+    ----------
+    delta : Union{Float64, AbstractVector{Float64}}
+        The substitutability of foreign versus domestic input.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+
+    Returns
+    -------
+    Union{Float64, AbstractVector{Float64}}
+        The unconstrained cost share as a function of delta.
+    """
     return 1 ./ (1 .+ delta.^(-theta))
 end
 
 # Unconstrained costs share : uses the EK miracle 
 function lambda_U(delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
+    """
+    Compute the unconstrained cost share as a function of delta.
+        
+    Parameters
+    ----------
+    delta : Union{Float64, AbstractVector{Float64}}
+        The substitutability of foreign versus domestic input.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+
+    Returns
+    -------
+    Union{Float64, AbstractVector{Float64}}
+        The unconstrained cost share as a function of delta.
+    """
+    
     return 1 ./ (1 .+ delta.^(-theta))
 end
 
 # #Analytic density of chi_U (and lambda_U) for unconstrained firms
 function pdf_U(x::Union{Real, AbstractVector}, theta::Float64, mu::Float64, sigma::Float64; pct::Bool=true)
+    """
+    Compute the probability density function (pdf) of the unconstrained cost share as a function of x.
+
+    Parameters
+    ----------
+    x : Union{Real, AbstractVector}
+        The input value(s) for which to compute the pdf.
+    theta : Float64
+        The elasticity of substitution between foreign and domestic inputs.
+    mu : Float64
+        The mean of the log-normal distribution.
+    sigma : Float64
+        The standard deviation of the log-normal distribution.
+    pct : Bool
+        A flag indicating whether the input value(s) are expressed in percentage.
+
+    Returns
+    -------
+    Union{Float64, AbstractVector}
+        The pdf of the unconstrained cost share as a function of x.
+    """
+    
     # Convert scalar to vector if needed
     x = typeof(x) <: AbstractVector ? x : [x]
 
@@ -77,11 +159,45 @@ end
 
 # Unconstrained cost : Compute the index using chi_U
 function C_U(delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
+    """
+    Compute the unconstrained cost index as a function of delta.
+
+    Parameters
+    ----------
+    delta : Union{Float64, AbstractVector{Float64}}
+        The substitutability of foreign versus domestic input.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+
+    Returns
+    -------
+    Union{Float64, AbstractVector{Float64}}
+        The unconstrained cost index as a function of delta.
+    """
+    
     index = chi_U(delta, theta).^(1 / theta)
     return index
 end
 
 function C_comply(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
+    """
+    Compute the cost index for complying firms as a function of lambda_R.
+        
+    Parameters
+    ----------
+    lambda_R : Union{Float64, AbstractVector{Float64}}
+        The cost share of compliance to RCR.
+    delta : Union{Float64, AbstractVector{Float64}}
+        The substitutability of foreign versus domestic input.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+    
+    Returns
+    -------
+    Union{Float64, AbstractVector{Float64}}
+        The cost index for complying firms as a function of lambda_R.
+    """
+    
     # Ensure lambda_R is always treated as a vector
     chi_R = chi_lambda.(lambda_R, delta, theta)  # Broadcasting over vector
     k = (1 + theta) / theta
@@ -90,6 +206,23 @@ end
 
 # C.tilde is C_comply / C_U
 function C_tilde(lambda_R::Union{Float64, AbstractVector{Float64}}, delta::Union{Float64, AbstractVector{Float64}}, theta::Real)
+    """
+    Compliance cost
+
+    Parameters
+    ----------
+    lambda_R : Union{Float64, AbstractVector{Float64}}
+        The cost share of compliance to RCR.
+    delta : Union{Float64, AbstractVector{Float64}}
+        The substitutability of foreign versus domestic input.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+
+    Returns
+    -------
+    Union{Float64, AbstractVector{Float64}}
+        Compliance cost
+    """
     # Compute the threshold lambda_U
     lambda_u = lambda_U(delta, theta)  # lambda_U is chi_U in Julia
     
@@ -106,11 +239,44 @@ end
 
 # Limit of delta star as lambda_R -> 1 (in paper lambda_R -> chi_R, delta_max -> \bar{\delta}(\tau))
 function delta_max(tau::Float64, theta::Real)
+    """
+    Compute the maximum value of delta for complying firms.
+
+    Parameters
+    ----------
+    tau : Float64
+        The tariff penalty.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+
+    Returns
+    -------
+    Float64
+        The maximum value of delta for complying firms.
+    """
     return (tau.^theta - 1).^(-1 / theta)
 end
 
 # Cutoff delta for complying
 function delta_star(lambda_R::Union{Float64, AbstractVector{Float64}}, tau::Float64, theta::Real)
+    """
+    Compute the cutoff value of delta for complying firms.
+
+    Parameters
+    ----------
+    lambda_R : Union{Float64, AbstractVector{Float64}}
+        The cost share of compliance to RCR.
+    tau : Float64
+        The tariff penalty.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+        
+    Returns
+    -------
+    Union{Float64, AbstractVector{Float64}}
+        The cutoff value of delta for complying firms.
+    """
+   
     # Define the auxiliary function ufn
     ufn = x -> C_tilde(lambda_R, x, theta) - tau
     
@@ -123,11 +289,44 @@ end
 
 # Cutoff delta for complying - unconstrained
 function delta_circ(lambda_R::Union{Float64, AbstractVector{Float64}}, theta::Real)
+    """
+    Compute the cutoff value of delta for complying firms in the unconstrained case.
+
+    Parameters
+    ----------
+    lambda_R : Union{Float64, AbstractVector{Float64}}
+        The cost share of compliance to RCR.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+
+    Returns
+    -------
+    Union{Float64, AbstractVector{Float64}}
+        The cutoff value of delta for complying firms in the unconstrained case.
+    """
+    
     return (lambda_R.^(-1) .- 1) .^ (-1 ./(theta-1))
 end # module
 
 # Function for generating heterogenous alpha constrained between 0 and 1 
 function beta_draws(N::Int64, centre::Float64, concentration::Float64)
+    """
+    Generate random values from a Beta distribution.
+
+    Parameters
+    ----------
+    N : Int64
+        The number of random values to generate.
+    centre : Float64
+        The centre of the Beta distribution.
+    concentration : Float64
+        The concentration of the Beta distribution.
+        
+    Returns
+    -------
+    Array{Float64, 1}
+        An array of random values from the Beta distribution.
+    """
     # Set the parameters & limits
     a = 0
     c = 2 * centre 
@@ -137,6 +336,24 @@ function beta_draws(N::Int64, centre::Float64, concentration::Float64)
 end 
 
 function ubeta_draws(N::Int64, centre::Union{Float64, Vector{Float64}}, concentration::Real)
+    """
+    Generate random values from a Beta distribution.
+
+    Parameters
+    ----------
+    N : Int64
+        The number of random values to generate.
+    centre : Union{Float64, Vector{Float64}}
+        The centre of the Beta distribution.
+    concentration : Real
+        The concentration of the Beta distribution.
+
+    Returns
+    -------
+    Array{Float64, 1}
+        An array of random values from the Beta distribution.
+    """
+    
     if typeof(centre) <: Vector
         # Validate all `centre` values are less than 1
         if any(c -> c >= 1, centre)
@@ -156,6 +373,22 @@ function ubeta_draws(N::Int64, centre::Union{Float64, Vector{Float64}}, concentr
 end
 
 function clean_density_data(df::DataFrame, data_dens_name::Symbol)
+    """
+    Clean the density data in the given DataFrame and allow naming the column of the density data.
+
+    Parameters
+    ----------
+    df : DataFrame
+        The DataFrame containing the density data.
+    data_dens_name : Symbol
+        The name of the column containing the density data.
+
+    Returns
+    -------
+    DataFrame
+        A cleaned DataFrame containing the density data.
+    """
+
     clean_df = @chain df begin
         @transform!(:x_round = round.(:kernell_x))  # Round values
         @rsubset(:x_round >= 0.00, :x_round <= 100.00)  # Filter valid ranges
@@ -175,6 +408,38 @@ end
 # Lambda simulations simplest version =========================================
 
 function sim_lambda(RCR, mu, sigma, theta, tau_data, alpha_lo, alpha_hi, alpha_a, alpha_b, N)
+    """
+    Simulate the lambda values for the AALA model.
+
+    Parameters
+    ----------
+    RCR : Float64
+        The regional content ratio.
+    mu : Float64
+        The mean of the log-normal distribution for delta.
+    sigma : Float64
+        The standard deviation of the log-normal distribution for delta.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+    tau_data : Union{Float64, AbstractVector{Float64}}
+        The tariff data.
+    alpha_lo : Float64
+        The lower bound of the share of local production.
+    alpha_hi : Float64
+        The upper bound of the share of local production.
+    alpha_a : Float64
+        The shape parameter a of the Beta distribution for alpha.
+    alpha_b : Float64
+        The shape parameter b of the Beta distribution for alpha.
+    N : Int64
+        The number of observations to simulate.
+
+    Returns
+    -------
+    Dict
+        A dictionary containing the results of the simulation.
+    """
+    
     #  Draw the three dimensions of heterogeneity : 
     # - delta : substituability of foreing vers domestic imput 
     # - alpha : share of local production
@@ -299,6 +564,35 @@ end
 
 # Main functions for simulating lambda and alpha and keeping track of V_iso_o ========================
 function sim_lambda_alpha_o(; RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
+    """
+    Simulate the lambda and alpha values for the AALA model but keep track of the V_iso_o.
+
+    Parameters  
+    ----------
+    RCR : Float64
+        The regional content ratio.
+    mu : Float64
+        The mean of the log-normal distribution for delta.
+    sigma : Float64 
+        The standard deviation of the log-normal distribution for delta.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+    tau_data : Union{Float64, AbstractVector{Float64}}
+        The tariff data.
+    mu_alpha : Float64
+        The mean of the Beta distribution for alpha.
+    conc_alpha : Float64
+        The concentration of the Beta distribution for alpha.
+    conc_err : Float64
+        The concentration of the Beta distribution for the error term.
+    N : Int64
+        The number of observations to simulate.
+    
+    Returns
+    -------
+    Dict
+        A dictionary containing the results of the simulation.
+    """
 # We draw the three dimensions of heterogeneity :
 # - delta : substituability of foreing vers domestic imput
 # - tau, tauQ : tariff from imports
@@ -360,6 +654,41 @@ end
 
 # Function for simulating with relocation =======================================
 function sim_lambda_alpha_DRF(RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, omegaF,omegaR,kappa,N)
+    """
+    Simulate the lambda and alpha values for the AALA model with relocation.
+
+    Parameters
+    ----------
+    RCR : Float64
+        The regional content ratio.
+    mu : Float64
+        The mean of the log-normal distribution for delta.
+    sigma : Float64
+        The standard deviation of the log-normal distribution for delta.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+    tau_data : Union{Float64, AbstractVector{Float64}}
+        The tariff data.
+    mu_alpha : Float64
+        The mean of the Beta distribution for alpha.
+    conc_alpha : Float64
+        The concentration of the Beta distribution for alpha.
+    conc_err : Float64
+        The concentration of the Beta distribution for the error term.
+    omegaF : Float64
+        The cost of non-compliance in the foreign market.
+    omegaR : Float64
+        The cost of non-compliance in the regional market.
+    kappa : Float64
+        The cost of relocation.
+    N : Int64
+        The number of observations to simulate.
+
+    Returns
+    -------
+    Dict
+        A dictionary containing the results of the simulation.
+    """
     # We draw the three dimensions of heterogeneity
     delta_tilde = rand(LogNormal(N, mu, sigma), N) # always firm specific
     delta = delta_tilde./kappa # kappa is for relocation
@@ -431,6 +760,37 @@ end
 # FUNCTIONS FOR THE LAFFER CURVE ===============================================
 
 function sim_avg_RCS_alpha(RCR, theta, mu, sigma, tau_data, alpha, conc_alpha, conc_err, N)
+    """
+    Compute the average regional content share (RCS) for the AALA model.
+        
+
+    Parameters
+    ----------
+    RCR : Float64
+        The regional content ratio.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+    mu : Float64
+        The mean of the log-normal distribution for delta.
+    sigma : Float64
+        The standard deviation of the log-normal distribution for delta.
+    tau_data : Union{Float64, AbstractVector{Float64}}
+        The tariff data.
+    alpha : Float64
+        The share of local production.
+    conc_alpha : Float64
+        The concentration of the Beta distribution for alpha.
+    conc_err : Float64
+        The concentration of the Beta distribution for the error term.
+    N : Int64
+        The number of observations to simulate.
+        
+    Returns
+    -------
+    Float64
+        The average regional content share (RCS) for the AALA model.
+    """
+    
     # Set random seed for reproducibility
     Random.seed!(42)
 
@@ -447,6 +807,36 @@ function sim_avg_RCS_alpha(RCR, theta, mu, sigma, tau_data, alpha, conc_alpha, c
 end
 
 function sim_choice( RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc_err, N)
+    """
+    Compute the choice of the AALA model.
+
+    Parameters
+    ----------
+
+    RCR : Float64
+        The regional content ratio.
+    mu : Float64
+        The mean of the log-normal distribution for delta.
+    sigma : Float64
+        The standard deviation of the log-normal distribution for delta.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+    tau_data : Union{Float64, AbstractVector{Float64}}
+        The tariff data.
+    mu_alpha : Float64
+        The mean of the Beta distribution for alpha.
+    conc_alpha : Float64
+        The concentration of the Beta distribution for alpha.
+    conc_err : Float64
+        The concentration of the Beta distribution for the error term.
+    N : Int64
+        The number of observations to simulate.
+
+    Returns
+    -------
+    DataFrame
+        A DataFrame containing the choices of the AALA model.
+    """
     # Set random seed for reproducibility
     Random.seed!(42)
 
@@ -469,6 +859,42 @@ function sim_choice( RCR, mu, sigma, theta, tau_data, mu_alpha, conc_alpha, conc
 end
 
 function sim_avg_RCS_alpha_DRF(RCR,theta,mu,sigma,tau_data,alpha,conc_alpha,conc_err,N,omegaR,omegaF,kappa)
+    """
+    Compute the average regional content share (RCS) for the AALA model with relocation.
+
+    Parameters
+    ----------
+    RCR : Float64
+        The regional content ratio.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+    mu : Float64
+        The mean of the log-normal distribution for delta.
+    sigma : Float64
+        The standard deviation of the log-normal distribution for delta.
+    tau_data : Union{Float64, AbstractVector{Float64}}
+        The tariff data.
+    alpha : Float64
+        The share of local production.
+    conc_alpha : Float64
+        The concentration of the Beta distribution for alpha.
+    conc_err : Float64
+        The concentration of the Beta distribution for the error term.
+    N : Int64
+        The number of observations to simulate.
+    omegaR : Float64
+        The cost of non-compliance in the regional market.
+    omegaF : Float64
+        The cost of non-compliance in the foreign market.
+    kappa : Float64
+        The cost of relocation.
+
+    Returns
+    -------
+    Float64
+        The average regional content share (RCS) for the AALA model with relocation.
+    """
+    
     Random.seed!(42)
 
     sim_out = sim_lambda_alpha_DRF(RCR = RCR,theta=theta,mu=mu,sigma=sigma,
@@ -481,6 +907,43 @@ function sim_avg_RCS_alpha_DRF(RCR,theta,mu,sigma,tau_data,alpha,conc_alpha,conc
 end
 
 function sim_choice_DRF(RCR,theta,mu,sigma,tau_data,alpha,conc_alpha,conc_err,N,omegaR,omegaF,kappa)
+    """
+    Compute the choice of the AALA model with relocation.
+
+    Parameters
+    ----------
+    RCR : Float64
+        The regional content ratio.
+    theta : Real
+        The elasticity of substitution between foreign and domestic inputs.
+    mu : Float64
+        The mean of the log-normal distribution for delta.
+    sigma : Float64
+        The standard deviation of the log-normal distribution for delta.
+    tau_data : Union{Float64, AbstractVector{Float64}}
+        The tariff data.
+    alpha : Float64
+        The share of local production.
+    conc_alpha : Float64
+        The concentration of the Beta distribution for alpha.
+    conc_err : Float64
+        The concentration of the Beta distribution for the error term.
+    N : Int64
+        The number of observations to simulate.
+    omegaR : Float64
+        The cost of non-compliance in the regional market.
+    omegaF : Float64
+        The cost of non-compliance in the foreign market.
+    kappa : Float64
+        The cost of relocation.
+
+    Returns
+    -------
+    DataFrame
+        A DataFrame containing the choices of the AALA model with relocation.
+    """
+    
+    
     Random.seed!(42)
 
     sim_out = sim_lambda_alpha_DRF(RCR = RCR,theta=theta,mu=mu,sigma=sigma,
@@ -550,32 +1013,3 @@ function loss_fun_alpha(; mu::Union{Float64, AbstractVector{Float64}}, calib_par
     fit = norm(den_data .- den_sim) # Compute L2 norm
     return fit
 end
-
-# BRUT FORCE FUNCTION ==========================================================
-# TEMPORARY FUNCTION FOR TESTING PURPOSES
-
-function brut_force_optim(; mu_val::AbstractVector{Float64}, calib_param::Dict, grid_param::DataFrame, DD::DataFrame)
-    # the four parameters to estimate are mu, sigma, alphacon, errcon
-    mu_rep = reapeat([mu_val], calib_param[:num_obs])
-    
-    # Compute loss for each combination of parameters
-    loss = map(
-        (sigma, alphacon, errcon) -> loss_fun_alpha(
-            mu = mu_rep,
-            calib_param = calib_param,
-            grid_param = grid_param,
-            DD = DD
-        ),
-    )
-
-    # Create and return a DataFrame
-    return DataFrame(
-        :mu => mu_rep,
-        :sigma => grid_param.sigma,
-        :cona => grid_param.alphacon,
-        :cone => grid_param.errcon,
-        :loss => loss
-    )
-end
-
-end # module
