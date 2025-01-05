@@ -62,11 +62,12 @@ run_short() # generate the outputs without simulation to reduce computational re
 run_long() # generate the outputs with the simulation 
 ```
 
-| file name       | output       |
-|-----------------|--------------|
-|  AALA_clean.jl  | DR (Dataframe) |
-| AALA_calibration_plot.jl  |   |
-| Ligne 3, A   | Ligne 3, B   |
+| file name                 | output                            |
+|---------------------------|-----------------------------------|
+| AALA_clean.jl             | DR (Dataframe)                    |
+| AALA_clean.jl             | nafta_shr_lib_con_rev.txt (table) |
+| AALA_calibration_plot.jl  | AALA_calib_model_data.pd (graph)  |
+| AALA_IHS_table.jl         | AALA_IHS_table.tex (table)        |
 
 
 # RoO
