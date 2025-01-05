@@ -1,6 +1,5 @@
-# We test our julia functions based on the results obtained from the original paper functions. 
-
 include("../src/AALA_calibration_functions.jl")
+include("../src/AALA_solving_model_alternative.jl")
 include("../src/AALA_clean.jl")
 
 using .AALA_calibration_functions
@@ -54,19 +53,21 @@ using Test
     # Test clean density data
     @test AALA_calibration_functions.clean_density_data(
         DataFrame(:kernell_x => [1,2,3,4,5], :kernell_y => [1,2,3,4,5]), :den_data) isa DataFrame
-
-    # MAIN FUNCTIONS
-    # sim lambda
-
-
-    # sim_lambda_alpha
     
-    # sim_lambda_alpha_o
+end
 
-    # sim_lambda_alpha_DRF
-    
-    
+@testset "AALA_solving_model_alternative.jl" begin
+    # Test compliance cost
+    @test C_tilde(0.615, 1.1, 4.0) isa Union{Float64, AbstractVector{Float64}}
 
+    # Test delta max
+    @test δ_max(1.1, 4.0) .> 0.0
+    
+    # Test delta star
+    @test δ_star(0.6, 1.02, 4.0) .> 0.0 && δ_star(0.6, 1.02, 4.0) .< δ_max(1.1, 4.0)
+    
+    # Test delta circ
+    @test δ_circ(0.6, 4.0) .> 0.0 
 end
 
 # We test for the calibration of the model ==========================================================
@@ -123,4 +124,3 @@ end
         @test typeof(result) == DataFrame
 
 end
-
