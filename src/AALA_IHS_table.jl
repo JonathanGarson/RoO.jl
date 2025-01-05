@@ -59,7 +59,7 @@ DRc = combine(grouped,
 filtered_car = filter(:typeA => ==("Car/MPV"), DR)
 
 # Effectuer les agrégations
-DRc_car = combine(groupby(filtered_car, :ellA),
+DRc_car = combine(DataFrames.groupby(filtered_car, :ellA),
     :carlines => x -> length(unique(x)), 
     :nafta_shr => median => :median_nafta_shr_Car,
     :nafta_shr => x -> quantile(x, 0.75) - quantile(x, 0.25) 
@@ -72,7 +72,7 @@ delete!(DRc_car, [4])
 filtered_truck = filter(:typeA => ==("Truck"), DR)
 
 # Effectuer les agrégations
-DRc_truck = combine(groupby(filtered_truck, :ellA),
+DRc_truck = combine(DataFrames.groupby(filtered_truck, :ellA),
     :carlines => x -> length(unique(x)),
     :nafta_shr => median => :median_nafta_shr_Truck,
     :nafta_shr => x -> quantile(x, 0.75) - quantile(x, 0.25)
