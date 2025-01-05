@@ -4,9 +4,10 @@ using DataFramesMeta
 using StatsBase
 using Statistics
 using IterTools
+include("files_path.jl")
 
 
-file_path = "original_code/Data/AALA/data_aala_raw.csv"
+file_path = "$input_raw_data/data_aala_raw.csv"
 
 #Load raw data
 DR = CSV.read(file_path, DataFrame)
@@ -746,7 +747,7 @@ println(result)
 
 
 #  Redirect output to a file
-open("output/tables/nafta_shr_lib_con_rev.txt", "w") do file
+open("$output_tables/nafta_shr_lib_con_rev.txt", "w") do file
     redirect_stdout(file)
     
     println("Mexico shares by assembly location, conservative and then liberal")
@@ -769,4 +770,4 @@ open("output/tables/nafta_shr_lib_con_rev.txt", "w") do file
     # End redirection automatically at the end of the block
 end
 
-CSV.write("output/data/AALA_rev.csv", DR)
+CSV.write("$output_data/AALA_rev.csv", DR)
