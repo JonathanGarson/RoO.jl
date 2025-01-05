@@ -13,13 +13,14 @@ The folders are organised as follow:
 ```
 ├── README.md          <- The top-level README for developers using this project.
 │
-├── data               <- folder containing all the originary data
+├── data               <- folder containing all the original data (copy of `original_code/Data`)
 │   ├── AALA           <- AALA data
 │   ├── GravData       <- Gravity Data
 │   ├── Mfg_surveys    <- Manufacturing surveys
 │   └── RDS_JIE        <- RDS data used in the paper
 |
 ├── original_code
+│   ├── Data          <- Original Data
 │   ├── Julia          <- Julia files
 │   ├── Mathematica    <- Mathematica files
 │   ├── Plots_JIE_rev  <- Plots for the Japanese Journal of International Economics
