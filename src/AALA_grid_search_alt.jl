@@ -1,5 +1,4 @@
 # This code replicate the simulation results from the paper. 
-# ajouter des constantes
 
 using Chain
 using DataFrames
