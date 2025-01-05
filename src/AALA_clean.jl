@@ -705,8 +705,45 @@ it = DataFrame(
 # Display the resulting DataFrame
 println(it)
 
+function sumit(DR::DataFrame, x::String, y::String)
+    # Dynamically construct the column name
+    column_name = ("mx_shr_" * y)
+     # Check if the column exists in the original DataFrame
+     if !(column_name in names(DR))
+        error("The column $column_name does not exist in the DataFrame.")
+    end
+    #Filter rows where ell == x
+    filtered_data_sumit = filter(row -> row.ell == x, DR)
+    # Calculate summary statistics for the filtered column
+    summary_stats = describe(filtered_data_sumit[!, column_name])
+    return summary_stats
+    
+end
+
 DR[!, :nafta_shr_lib] = DR[!, :us_ca_shr] .+ coalesce.(DR[!, :mx_shr_lib], 0.0)
 DR[!, :nafta_shr_con] = DR[!, :us_ca_shr] .+ coalesce.(DR[!, :mx_shr_con], 0.0)
+
+function sumit_2(DR::DataFrame, x::String, y::String)
+    # Dynamically construct the column name
+    column_name = ("nafta_shr_" * y)
+     # Check if the column exists in the original DataFrame
+     if !(column_name in names(DR))
+        error("The column $column_name does not exist in the DataFrame.")
+    end
+    #Filter rows where ell == x
+    filtered_data_sumit = filter(row -> row.ell == x, DR)
+    # Calculate summary statistics for the filtered column
+    summary_stats = describe(filtered_data_sumit[!, column_name])
+    return summary_stats
+    
+end
+# Call the function
+#result = sumit(DR, "CA", "con")
+#println(result)
+#same result as original code
+result = sumit_2(DR, "CA", "con")
+println(result)
+
 
 #  Redirect output to a file
 open("output/nafta_shr_lib_con_rev.txt", "w") do file
