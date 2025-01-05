@@ -91,7 +91,7 @@ run_long() # generate the outputs with the simulation
 | AALA_calibration_plot.jl | AALA_calib_model_data.pdf (graph) | output/figures |
 | AALA_IHS_table.jl        | AALA_IHS_table.tex (table)        | output/table   |
 
-## Reproduction
+## Details on the replication code
 
 ### Replication of AALA_clean.
 
