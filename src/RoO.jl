@@ -27,6 +27,7 @@ function run_short()
     include("src/AALA_clean.jl")                    # Cleans AALA data and outputs a file
     include("src/AALA_IHS_table.jl")                # Generates Table 1
     include("src/AALA_calibration_plots.jl")        # Generate plot 1
+    include("src/mathematica_plots.jl")             # Generate figure 1 and 5
 end
 
 function run_sim()

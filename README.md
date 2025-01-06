@@ -10,13 +10,7 @@ We opted to replicate the data cleaning procedures, the generation of key figure
 
 ## Reproduction
 
-At the address of the replicator. The first step is to download the package RoO. For that enter in the Julia terminal:
-
-```
-] add RoO
-```
-
-or alternatively in the command terminal :
+At the address of the replicator. The first step is to download the package RoO. For that enter in the command terminal :
 
 ```
 > git clone https://github.com/JonathanGarson/RoO.jl.git
@@ -43,6 +37,10 @@ run_sim() # generate the simulation output
 | AALA_calibration_plot.jl | AALA_calib_model_data.pdf (graph) | output/figures    |
 | AALA_IHS_table.jl        | AALA_IHS_table.tex (table)        | output/table      |
 | AALA_grid_search_alt.jl  | optimal_params.jls                | output/parameters |
+| mathematica_plots.jl     | figure_1a.pdf                     | output/figures    |
+| mathematica_plots.jl     | figure_1b.pdf                     | output/figures    |
+| mathematica_plots.jl     | figure_5a.pdf                     | output/figures    |
+| mathematica_plots.jl     | figure_5b.pdf                     | output/figures    |
 
 ## Folder organisation
 
@@ -70,6 +68,7 @@ The folders are organised as follow:
 │
 └── src                <- Source code for use in this project.
 ```
+
 Please note that unfortunately, GitHub Pages has not been able to build our documentation website even though all the material is here. We suppose given our stacktrace that this comes from the large CPU demand that precompiling requires. However, functions are well documented within code with comprehensive docstrings.
 
 ## Computational Requirements
@@ -90,7 +89,7 @@ We indicate here the minimum ressources used for replication on our own devices.
 
 ## Expected run time
 
-The total expected running time of the replication package is about 45 mn including compilation time. If we exclude compilation, about 10 to 15mn, we have the following run time per function: 
+The total expected running time of the replication package is about 45 mn including compilation time. If we exclude compilation, about 10 to 15mn, we have the following run time per function:
 
 - run_short() : ~3 mn
 - run_sim() : ~25 mn
@@ -100,7 +99,7 @@ The total expected running time of the replication package is about 45 mn includ
 | Dataset           | Availibility | Cleaning Code - Blanchon, Garson & Ortiz | Cleaning Code - Head, Mayer & Melitz |
 | ----------------- | ------------ | ---------------------------------------- | ------------------------------------ |
 | data_aala_raw.csv | YES          | AALA_clean.jl                            | AALA_clean.R                         |
-| IHS_sales         | NO           | NA                                       | data_aala_raw.csv (provided as so)                    |
+| IHS_sales         | NO           | NA                                       | data_aala_raw.csv (provided as so)   |
 
 ## Details on the replication code
 
@@ -115,11 +114,13 @@ This Julia script performs the cleaning and analysis of AALA data from a raw CSV
 - `E_US`, `E_CA`, `T_US`, `T_CA`, etc., to determine the origins of engines and transmissions.
 
 3. Split  the colomn `percent_content_other1` and `percent_content_other2`, which contains both percentage and country of origine in to distinct column `other1_shr` et `other2_shr` for percent content, `other1_who` and  `other2_who` for country code.
->[!warning] 
-   We note an error in the package replication : Running `DR[,other2_shr := as.numeric(st_left(percent_content_other2,"%"))]` produces only `NA` wich is not consistent with what the code intend to do.
-   using the following command instead allows to accuratly capture the percentage value in `other2_shr` : `DR[, numeric_part := fifelse(!is.na(percent_content_other2)`&`grepl("^[0-9]+"percent_content_other2),ub("^([0-9]+).*", "\\1", percent_content_other2), NA_character_)]` `DR[,other2_who := st_right(percent_content_other2,"%")]`
-   We notice a similar issue while creating the column `other2_who`.
-   This could lead to potential descrapency between the article's outputs and our own outputs.
+
+> [!warning]
+> We note an error in the package replication : Running `DR[,other2_shr := as.numeric(st_left(percent_content_other2,"%"))]` produces only `NA` wich is not consistent with what the code intend to do.
+> using the following command instead allows to accuratly capture the percentage value in `other2_shr` : `DR[, numeric_part := fifelse(!is.na(percent_content_other2)`&`grepl("^[0-9]+"percent_content_other2),ub("^([0-9]+).*", "\\1", percent_content_other2), NA_character_)]` `DR[,other2_who := st_right(percent_content_other2,"%")]`
+> We notice a similar issue while creating the column `other2_who`.
+> This could lead to potential descrapency between the article's outputs and our own outputs.
+
 4. Filtering and Tabulating Rows Based on `other2_who` Column, and Correcting Specific Data Issues
 5. Standardize country codes (US, CA, MX) for assembly locations, filters rows based on these codes, computes summary statistics for the `us_ca_shr` column, and counts rows where both `other1_who` and `other2_who` contain "M," ensuring consistency and addressing data issues.
 6. Creating `mx_shr column` and assign values from `other1_shr` and `other2_shr` to the `mx_shr` column for rows where `other1_who` or `other2_who` contains "M." Filter rows based on assembly location (USCAMX, MX, and MX2 sets) and compute summary statistics (mean, min, max, and counts of missing/non-missing values) for the `mx_shr` column across these subsets.
@@ -153,7 +154,7 @@ Here are the results in term of computational requirements :
 | Category               | Head, Mayer & Melitz                                                                                  | Blanchon, Garson & Ortiz |
 | ---------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------ |
 | Computation time       | ~ 1 hour                                                                                              | ~ 25 minutes             |
-| Computation complexity | Multithreading                                                                                         | Single thread            |
+| Computation complexity | Multithreading                                                                                        | Single thread            |
 | OS limitations         | Multithreading implemented only available on MacOS, makes computation on Windows very long (>5 hours) | Theoretically none       |
 | RAM                    | Not known                                                                                             | 3.6 Gb                   |
 
