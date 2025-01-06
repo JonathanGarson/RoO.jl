@@ -22,14 +22,14 @@ DC = DataFrame(load("$input_clean_data/tau_index_DRF.rds")) # call only the rele
 const calib_year = 2011:2019
 const Mex_con_lib = "con"
 const countries = ["CA", "MX", "US"]
-const alpha_base = 0.15
-const theta_base = 4.0
-const RCR_pct = 0.625
-const RCR = RCR_pct*100
-const mu = 0.0
-const sigma = 0.0
-const tau = DC[!, :tauD]
-const conc_err = 1e10
+alpha_base = 0.15
+theta_base = 4.0
+RCR_pct = 0.625
+RCR = RCR_pct*100
+mu = 0.0
+sigma = 0.0
+tau = DC[!, :tauD]
+conc_err = 1e10
 
 # Compute the data density ================================================
 if Mex_con_lib == "con" 
@@ -48,15 +48,15 @@ DD = @chain DR begin
         )                      
     end
 
-const num_obs = size(DC, 1) # match the number of observations in the simulated data to avoid dimension mismatch
+num_obs = size(DC, 1) # match the number of observations in the simulated data to avoid dimension mismatch
 
 DD = clean_density_data(DD, :den_data)
 
 # Grid search =============================================================
-const mu_grid = -0.1:0.01:0.25
-const sigma_grid = 0.0:0.01:0.25
-const alpha_con_grid = [1,1.25,1.5,1.75,2,2.25,2.5, 3:20...]
-const errcon_grid = [2:25...]
+mu_grid = -0.1:0.01:0.25
+sigma_grid = 0.0:0.01:0.25
+alpha_con_grid = [1,1.25,1.5,1.75,2,2.25,2.5, 3:20...]
+errcon_grid = [2:25...]
 
 # We run the grid search
 results = grid_search_loss(
