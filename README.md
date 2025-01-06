@@ -33,7 +33,6 @@ run_short() # generate the outputs without simulation to reduce computational re
 run_sim() # generate the simulation 
 ```
 
-
 | Generating File          | Output                            | Output Folder     |
 | ------------------------ | --------------------------------- | ----------------- |
 | AALA_clean.jl            | DR (Dataframe)                    | output/data       |
@@ -90,7 +89,7 @@ We indicate here the minimum ressources used for replication on our own devices.
 The total expected running time of the replication package is:
 
 - run_short() : ~3 mn
-- run_long() : ~30 mn
+- run_sim() : ~25 mn
 
 For the simulation and estimation of the optimal parameters : ~25 mn (which compares to 1h for the original package).
 
