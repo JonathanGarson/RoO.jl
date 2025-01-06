@@ -2,7 +2,6 @@
 
 # Data 
 *.xlx
-*.csv
 *.xlsx
 *.json
 *.RData
