@@ -95,7 +95,8 @@ For the simulation and estimation of the optimal parameters : ~25 mn (which comp
 ## Data Availibility
 | Dataset          | Availibility                         |  Cleaning Code - Blanchon, Garson & Ortiz  | Cleaning Code - Head, Mayer & Melitz  |
 | ------------------------ | --------------------------------- | -------------- | -------------- |
-|             |                     |     | |
+|         data_aala_raw.csv    |       YES              |  AALA_clean.jl   | AALA_clean.R|
+|IHS_sales|NO|NA|data_aala_raw.csv|
 
 ## Details on the replication code
 
