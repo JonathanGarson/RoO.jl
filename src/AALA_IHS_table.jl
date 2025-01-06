@@ -88,9 +88,9 @@ DT = DataFrame(load("$input_clean_data/tau_index_DRF.rds"))
 
 count_non_missing = count(!ismissing, DT.tauD)
 
-open("original_code/Tables_JIE_rev/tauD_count.txt", "w") do file
-    write(file, "$count_non_missing\n")
-end
+# open("original_code/Tables_JIE_rev/tauD_count.txt", "w") do file
+#     write(file, "$count_non_missing\n")
+# end
 
 rename!(DT, :tauD => :tau_index)
 
