@@ -15,6 +15,7 @@ At the address of the replicator. The first step is to download the package RoO.
 ```
 ] add RoO
 ```
+
 or alternatively in the command terminal :
 
 ```
@@ -29,16 +30,17 @@ Then, to replicate easily the outputs you can run the following commands in the 
 using RoO
 
 run_short() # generate the outputs without simulation to reduce computational requirements and generation time
-run_long() # generate the outputs with the simulation 
+run_sim() # generate the simulation 
 ```
 
-| Generating File          | Output                            | Output Folder  |
-| ------------------------ | --------------------------------- | -------------- |
-| AALA_clean.jl            | DR (Dataframe)                    | output/data    |
-| AALA_clean.jl            | nafta_shr_lib_con_rev.txt (table) | output/table   |
-| AALA_calibration_plot.jl | AALA_calib_model_data.pdf (graph) | output/figures |
-| AALA_IHS_table.jl        | AALA_IHS_table.tex (table)        | output/table   |
-|AALA_grid_search_alt.jl| optimal_params.jls | output/parameters|
+
+| Generating File          | Output                            | Output Folder     |
+| ------------------------ | --------------------------------- | ----------------- |
+| AALA_clean.jl            | DR (Dataframe)                    | output/data       |
+| AALA_clean.jl            | nafta_shr_lib_con_rev.txt (table) | output/table      |
+| AALA_calibration_plot.jl | AALA_calib_model_data.pdf (graph) | output/figures    |
+| AALA_IHS_table.jl        | AALA_IHS_table.tex (table)        | output/table      |
+| AALA_grid_search_alt.jl  | optimal_params.jls                | output/parameters |
 
 ## Folder organisation
 
@@ -93,10 +95,11 @@ The total expected running time of the replication package is:
 For the simulation and estimation of the optimal parameters : ~25 mn (which compares to 1h for the original package).
 
 ## Data Availibility
-| Dataset          | Availibility                         |  Cleaning Code - Blanchon, Garson & Ortiz  | Cleaning Code - Head, Mayer & Melitz  |
-| ------------------------ | --------------------------------- | -------------- | -------------- |
-|         data_aala_raw.csv    |       YES              |  AALA_clean.jl   | AALA_clean.R|
-|IHS_sales|NO|NA|data_aala_raw.csv|
+
+| Dataset           | Availibility | Cleaning Code - Blanchon, Garson & Ortiz | Cleaning Code - Head, Mayer & Melitz |
+| ----------------- | ------------ | ---------------------------------------- | ------------------------------------ |
+| data_aala_raw.csv | YES          | AALA_clean.jl                            | AALA_clean.R                         |
+| IHS_sales         | NO           | NA                                       | data_aala_raw.csv                    |
 
 ## Details on the replication code
 
@@ -136,33 +139,35 @@ Remark : In order to replicate this script we had the replicate the fonction sta
 
 ### Replication of AALA_calibration_functions and AALA_calibration_brut_force
 
-We provide two types of code for replications which reflect both different use and progression. 
+We provide two types of code for replications which reflect both different use and progression.
 
-The firsts are `AALA_calibration_functions.jl` and `AALA_calibration_brute_force.jl` which are close copy of their R counterparts. These codes were made first and even though they are working, they are not optimized for Julia. We use them to produce output requiring few simulations such as 
+The firsts are `AALA_calibration_functions.jl` and `AALA_calibration_brute_force.jl` which are close copy of their R counterparts. These codes were made first and even though they are working, they are not optimized for Julia. We use them to produce output requiring few simulations such as
 such as Table 1 , the counts and medians of NAFTA parts cost shares and tariff indexes,  (with `AALA_ISH_table.jl`) and Figure 8, the Density of  model vs data, (with `AALA_calibration_plot.jl.
 
-The seconds are `AALA_solving_alt.jl` and `AALA_grid_search_alt.jl`. These codes are optimized for Julia and largely rely on matrix manipulation to enhance speed and reduce computational requirements. `AALA_solving_alt.jl` contains all the functions necessary to solve the model and `AALA_grid_search_alt.jl` execute them and store the optimal parameters in a dictionary. 
+The seconds are `AALA_solving_alt.jl` and `AALA_grid_search_alt.jl`. These codes are optimized for Julia and largely rely on matrix manipulation to enhance speed and reduce computational requirements. `AALA_solving_alt.jl` contains all the functions necessary to solve the model and `AALA_grid_search_alt.jl` execute them and store the optimal parameters in a dictionary.
 
 Here are the results in term of computational requirements :
 
-| Category          | Head, Mayer & Melitz                            |  Blanchon, Garson & Ortiz  |
-| ------------------------ | --------------------------------- | -------------- |
-| Computation time            | ~ 1 hour                    | ~ 25 minutes    |
-| Computation complexity            | Mulithreading | Single thread   |
-| OS limitations | Multithreading implemented only available on MacOS, makes computation on Windows very long (>5 hours) | Theoretically none |
-| RAM        | Not known        | 3.6 Gb   |
+| Category               | Head, Mayer & Melitz                                                                                  | Blanchon, Garson & Ortiz |
+| ---------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------ |
+| Computation time       | ~ 1 hour                                                                                              | ~ 25 minutes             |
+| Computation complexity | Mulithreading                                                                                         | Single thread            |
+| OS limitations         | Multithreading implemented only available on MacOS, makes computation on Windows very long (>5 hours) | Theoretically none       |
+| RAM                    | Not known                                                                                             | 3.6 Gb                   |
 
 And here the difference between the results of the four optimized parameters obtained by HMM and obtained MGO:
-| Parameters          | Head, Mayer & Melitz                            |  Blanchon, Garson & Ortiz  |
-| ------------------------ | --------------------------------- | -------------- |
-| mu            | 0.12                    | 0.2    |
-| sigma            | 0.18 | 0.18  |
-| alpha_concentration | 3.0 | 3.0 |
-| erreur_concentration        | 18        | 17   |
+
+| Parameters           | Head, Mayer & Melitz | Blanchon, Garson & Ortiz |
+| -------------------- | -------------------- | ------------------------ |
+| mu                   | 0.12                 | 0.2                      |
+| sigma                | 0.18                 | 0.18                     |
+| alpha_concentration  | 3.0                  | 3.0                      |
+| erreur_concentration | 18                   | 17                       |
 
 ### Replication of AALA_IHS_table
 
 AALA_IHS_table produces Table 1 of the paper, which summarizes key statistics from the AALA data. It presents, for each North American assembly country (Canada, Mexico, and the USA), the following metrics:
+
 - The number of vehicles.
 - The median parts cost share  for cars (including Sport Utility and Multi-Purpose Vehicles such as minivans) and light trucks (pickup trucks and vans).
 

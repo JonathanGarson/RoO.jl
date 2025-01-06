@@ -29,11 +29,7 @@ function run_short()
     include("src/AALA_calibration_plots.jl")        # Generate plot 1
 end
 
-function run_long()
-    include("src/files_path.jl")                    # Define the file paths
-    include("src/AALA_clean.jl")                    # Cleans AALA data and outputs a file
-    include("src/AALA_IHS_table.jl")                # Generates Table 1
-    include("src/AALA_calibration_plots.jl")        # Generate plot 1
+function run_sim()
     include("src/AALA_solving_alt.jl")              # Functions to solve the model
     include("src/AALA_grid_search_alt.jl")          # Grid search to find the best parameters
 end
