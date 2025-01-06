@@ -3,7 +3,6 @@ include("../src/AALA_calibration_functions.jl")
 using DataFrames
 using Test
 using Revise
-using RoO
 
 # We test for the functions in AALA_calibration_functions.jl ========================================
 @testset "AALA_calibration_functions.jl" begin
