@@ -1,12 +1,11 @@
 include("../src/AALA_calibration_functions.jl")
-include("../src/AALA_solving_alt.jl")
 include("../src/AALA_clean.jl")
+# include("../src/RoO.jl")
 
-using .AALA_calibration_functions
 using DataFrames
-using RoO
-using Revise
 using Test
+using Revise
+using RoO
 
 # We test for the functions in AALA_calibration_functions.jl ========================================
 @testset "AALA_calibration_functions.jl" begin
@@ -53,41 +52,6 @@ using Test
     @test clean_density_data(
         DataFrame(:kernell_x => [1,2,3,4,5], :kernell_y => [1,2,3,4,5]), :den_data) isa DataFrame
     
-end
-
-@testset "AALA_solving_alt.jl" begin
-    # Test lambda_RCR
-    @test isapprox(λ_RCR(0.5, [0.4]), [0.16666666666666663]; atol=1e-8)
-
-    # Test χ_λ
-    @test χ_λ(1.0, 4.0) == [0.5]
-
-    # Test χ_U
-    @test isapprox(χ_U(1.0, 1.0), 0.5; atol=1e-8)
-
-    # Test λ_U
-    @test isapprox(λ_U(1.0, 1.0), 0.5; atol=1e-8)
-
-    # Test pdf_U
-    @test isapprox(pdf_U([0.5,0.6], 1.0, 1.0, 1.0), [2.013036e-09, 5.234425e-09]; atol=1e-8)
-
-    # Test C_U
-    @test isapprox(C_U(0.6, 1.0), 0.375; atol=1e-1)
-
-    # Test C_comply
-    @test isapprox(C_comply(0.5, 0.5, 0.5), 0.1732807; atol=1e-5)
-
-    # Test compliance cost
-    @test C_tilde(0.615, 1.1, 4.0) isa Union{Float64, AbstractVector{Float64}}
-
-    # Test delta max
-    @test δ_max(1.1, 4.0) .> 0.0
-    
-    # Test delta star
-    @test δ_star(0.6, 1.02, 4.0) .> 0.0 && δ_star(0.6, 1.02, 4.0) .< δ_max(1.1, 4.0)
-    
-    # Test delta circ
-    @test δ_circ(0.6, 4.0) .> 0.0 
 end
 
 @testset "AALA_clean.jl" begin
