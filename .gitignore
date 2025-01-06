@@ -5,7 +5,7 @@
 *.xlsx
 *.json
 *.RData
-
+*.rds
 
 # Files
 docs/build/
