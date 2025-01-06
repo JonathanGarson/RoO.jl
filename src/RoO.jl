@@ -17,7 +17,7 @@ using Statistics
 using Serialization
 using Test
 
-export run_short, run_long
+export run_short, run_sim
 
 # import all functions from the script 
 Pkg.instantiate()  # Install the dependencies listed in Project.toml

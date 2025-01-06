@@ -21,7 +21,7 @@ DC = DataFrame(load("$input_clean_data/tau_index_DRF.rds")) # call only the rele
 # Calibration of the model ================================================
 const calib_year = 2011:2019
 const Mex_con_lib = "con"
-const CAMUS = ["CA", "MX", "US"]
+const countries = ["CA", "MX", "US"]
 const alpha_base = 0.15
 const theta_base = 4.0
 const RCR_pct = 0.625
@@ -40,7 +40,7 @@ end
 
 DR = @rsubset(DR, :year in calib_year)
 DD = @chain DR begin
-    @rsubset(:ell in CAMUS, !ismissing(:nafta_shr))  # Filter rows
+    @rsubset(:ell in countries, !ismissing(:nafta_shr))  # Filter rows
     @select(:nafta_shr)
     @combine(
         :kernell_x = kde(:nafta_shr).x,
