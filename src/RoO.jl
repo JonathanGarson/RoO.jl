@@ -20,7 +20,6 @@ using Test
 export run_short, run_sim
 
 # import all functions from the script 
-Pkg.instantiate()  # Install the dependencies listed in Project.toml
 
 function run_short()
     include("src/files_path.jl")                    # Define the file paths
