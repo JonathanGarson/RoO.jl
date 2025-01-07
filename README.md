@@ -24,7 +24,7 @@ Then, to replicate easily the outputs you can run the following commands in the 
 julia > ]
 julia > activate .
 
-using RoO # compilation takes about 10mn
+using RoO
 
 run_short() # generate the outputs without simulation to reduce computational requirements and generation time
 run_sim() # generate the simulation output
@@ -90,7 +90,7 @@ We indicate here the minimum ressources used for replication on our own devices.
 
 ## Expected run time
 
-The total expected running time of the replication package is about 45 mn including compilation time. If we exclude compilation, about 10 to 15mn, we have the following run time per function:
+The total expected running time of the replication package is about 30mn including compilation time. We have the following run time per function:
 
 - run_short() : ~3 mn
 - run_sim() : ~25 mn
